@@ -108,6 +108,22 @@ if (!gatheringColumns.some((c) => c.name === 'wrapped_at')) {
   db.exec('ALTER TABLE gatherings ADD COLUMN wrapped_at INTEGER');
 }
 
+// Verified gatherings: guests must sign in (Google or phone, through Clerk) to join.
+if (!gatheringColumns.some((c) => c.name === 'verified')) {
+  db.exec('ALTER TABLE gatherings ADD COLUMN verified INTEGER NOT NULL DEFAULT 0');
+}
+
+// Members who signed in carry their sign-in account and photo. removed_at is set
+// when the host removes someone; their link stops working and they leave the lists.
+const memberColumns = db.prepare('PRAGMA table_info(members)').all() as { name: string }[];
+for (const [column, type] of [
+  ['auth_user_id', 'TEXT'],
+  ['avatar_url', 'TEXT'],
+  ['removed_at', 'INTEGER'],
+] as const) {
+  if (!memberColumns.some((c) => c.name === column)) db.exec(`ALTER TABLE members ADD COLUMN ${column} ${type}`);
+}
+
 export type Gathering = {
   id: string;
   name: string;
@@ -117,6 +133,7 @@ export type Gathering = {
   away_token: string;
   created_at: number;
   wrapped_at: number | null;
+  verified: number; // 1 when guests must sign in to join
 };
 
 export type Member = {
@@ -126,6 +143,9 @@ export type Member = {
   name: string;
   points: number;
   created_at: number;
+  auth_user_id: string | null;
+  avatar_url: string | null;
+  removed_at: number | null;
 };
 
 // Short code people can read off a screen: no 0/O or 1/I to mix up.
@@ -141,7 +161,7 @@ export function secret(): string {
   return randomBytes(16).toString('hex');
 }
 
-export function createGathering(name: string, occasion: string, awayName: string): Gathering {
+export function createGathering(name: string, occasion: string, awayName: string, verified = false): Gathering {
   const gathering: Gathering = {
     id: shortCode(),
     name,
@@ -151,10 +171,11 @@ export function createGathering(name: string, occasion: string, awayName: string
     away_token: secret(),
     created_at: Date.now(),
     wrapped_at: null,
+    verified: verified ? 1 : 0,
   };
   db.prepare(
-    `INSERT INTO gatherings (id, name, occasion, away_name, host_token, away_token, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO gatherings (id, name, occasion, away_name, host_token, away_token, created_at, verified)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     gathering.id,
     gathering.name,
@@ -163,8 +184,13 @@ export function createGathering(name: string, occasion: string, awayName: string
     gathering.host_token,
     gathering.away_token,
     gathering.created_at,
+    gathering.verified,
   );
   return gathering;
+}
+
+export function setVerified(id: string, verified: boolean) {
+  db.prepare('UPDATE gatherings SET verified = ? WHERE id = ?').run(verified ? 1 : 0, id);
 }
 
 export function getGathering(id: string): Gathering | undefined {
@@ -183,15 +209,47 @@ export function keepsakeKey(g: Gathering): string {
   return createHmac('sha256', g.host_token).update(`yaadein:${g.id}:${g.away_token}`).digest('hex').slice(0, 24);
 }
 
-// Joining twice from the same phone returns the same member (and updates the name).
-export function joinGathering(gatheringId: string, deviceId: string, name: string): Member {
-  const existing = db
+// Someone already in this gathering with this name (any letter case), other than
+// the given member. Names must be unique, so nobody can pass as someone else.
+export function memberWithName(gatheringId: string, name: string, exceptId: string | null = null): Member | undefined {
+  return db
+    .prepare(
+      `SELECT * FROM members WHERE gathering_id = ? AND removed_at IS NULL
+         AND lower(name) = lower(?) AND id IS NOT ?`,
+    )
+    .get(gatheringId, name, exceptId) as Member | undefined;
+}
+
+export function memberByDevice(gatheringId: string, deviceId: string): Member | undefined {
+  return db
     .prepare('SELECT * FROM members WHERE gathering_id = ? AND device_id = ?')
     .get(gatheringId, deviceId) as Member | undefined;
+}
+
+export function memberByAuthUser(gatheringId: string, authUserId: string): Member | undefined {
+  return db
+    .prepare('SELECT * FROM members WHERE gathering_id = ? AND auth_user_id = ?')
+    .get(gatheringId, authUserId) as Member | undefined;
+}
+
+// Joining twice from the same phone (or, when signed in, the same account on any
+// phone) returns the same member and updates the name.
+export function joinGathering(
+  gatheringId: string,
+  deviceId: string,
+  name: string,
+  auth: { userId: string; avatarUrl: string | null } | null = null,
+): Member {
+  const existing = auth ? memberByAuthUser(gatheringId, auth.userId) : memberByDevice(gatheringId, deviceId);
 
   if (existing) {
-    db.prepare('UPDATE members SET name = ? WHERE id = ?').run(name, existing.id);
-    return { ...existing, name };
+    db.prepare('UPDATE members SET name = ?, device_id = ?, avatar_url = COALESCE(?, avatar_url) WHERE id = ?').run(
+      name,
+      deviceId,
+      auth?.avatarUrl ?? null,
+      existing.id,
+    );
+    return { ...existing, name, device_id: deviceId, avatar_url: auth?.avatarUrl ?? existing.avatar_url };
   }
 
   const member: Member = {
@@ -201,12 +259,22 @@ export function joinGathering(gatheringId: string, deviceId: string, name: strin
     name,
     points: 0,
     created_at: Date.now(),
+    auth_user_id: auth?.userId ?? null,
+    avatar_url: auth?.avatarUrl ?? null,
+    removed_at: null,
   };
   db.prepare(
-    `INSERT INTO members (id, gathering_id, device_id, name, points, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-  ).run(member.id, member.gathering_id, member.device_id, member.name, member.points, member.created_at);
+    `INSERT INTO members (id, gathering_id, device_id, name, points, created_at, auth_user_id, avatar_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    member.id, member.gathering_id, member.device_id, member.name, member.points, member.created_at,
+    member.auth_user_id, member.avatar_url,
+  );
   return member;
+}
+
+export function removeMember(id: string) {
+  db.prepare('UPDATE members SET removed_at = ? WHERE id = ?').run(Date.now(), id);
 }
 
 export function getMember(id: string): Member | undefined {
@@ -215,7 +283,7 @@ export function getMember(id: string): Member | undefined {
 
 export function listMembers(gatheringId: string): Member[] {
   return db
-    .prepare('SELECT * FROM members WHERE gathering_id = ? ORDER BY points DESC, created_at ASC')
+    .prepare('SELECT * FROM members WHERE gathering_id = ? AND removed_at IS NULL ORDER BY points DESC, created_at ASC')
     .all(gatheringId) as Member[];
 }
 

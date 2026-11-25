@@ -26,6 +26,8 @@ export function presence(gatheringId: string) {
       name: m.name,
       points: m.points,
       online: (counts.get(m.id) ?? 0) > 0,
+      avatarUrl: m.avatar_url,
+      verified: !!m.auth_user_id,
     })),
     awayOnline: (awayOnline.get(gatheringId) ?? 0) > 0,
   };
@@ -60,6 +62,17 @@ export function emitAway(gatheringId: string, event: string, payload: unknown) {
   io.to(awayOf(gatheringId)).emit(event, payload);
 }
 
+// The host removed someone: tell their open phones, then close them.
+export async function disconnectMember(gatheringId: string, memberId: string) {
+  const sockets = await io.in(roomOf(gatheringId)).fetchSockets();
+  for (const s of sockets) {
+    if (s.data.memberId === memberId) {
+      s.emit('fatal', { error: 'The host has removed you from this gathering.', removed: true });
+      s.disconnect(true);
+    }
+  }
+}
+
 // A flag flipped in Flagsmith: tell every phone in every gathering.
 onFlagsChange((next) => io.emit('flags', next));
 
@@ -86,7 +99,9 @@ io.on('connection', (socket: Socket) => {
   if (role === 'guest') {
     const member = getMember(String(auth.memberId ?? ''));
     if (!member || member.gathering_id !== g.id) return refuse('Join the gathering first.');
+    if (member.removed_at) return refuse('The host has removed you from this gathering.');
     memberId = member.id;
+    socket.data.memberId = member.id;
     const counts = online.get(g.id) ?? new Map<string, number>();
     bump(counts, memberId, 1);
     online.set(g.id, counts);

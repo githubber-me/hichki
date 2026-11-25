@@ -43,7 +43,11 @@ export function useRoom(id: string, who: Who | null) {
 
     socket.on('connect', () => setConnected(true));
     socket.on('disconnect', () => setConnected(false));
-    socket.on('fatal', (e: { error: string }) => setError(e.error));
+    socket.on('fatal', (e: { error: string; removed?: boolean }) => {
+      // Removed by the host: forget this gathering on this phone too.
+      if (e.removed && who.role === 'guest') localStorage.removeItem(`hichki:member:${id}`);
+      setError(e.error);
+    });
     socket.on('flags', (flags: Flags) => patch((f) => ({ ...f, flags })));
     socket.on('gathering', (gathering: PublicGathering) => patch((f) => ({ ...f, gathering })));
     socket.on('presence', (presence: Presence) =>
