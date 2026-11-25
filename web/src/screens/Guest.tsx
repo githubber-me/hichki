@@ -3,9 +3,9 @@ import { api, roomApi, saved, type Member, type Proof, type PublicGathering, typ
 import { useRoom } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
 import { AwayClock, DutyBanner } from '../duty.tsx';
-import { ThanksView } from '../thanks.tsx';
+import { ActivityStrip, Moments } from '../moments.tsx';
 import type { Hichki } from '../live.ts';
-import { StoryWords, HichkiButton, HichkiTimeline, Leaderboard, MicIcon, PhotoButton, ProofView, RecordButton, Stories, Tabs, clock, uploadPhoto, uploadRecording } from '../parts.tsx';
+import { HichkiButton, Leaderboard, MicIcon, PhotoButton, RecordButton, Tabs, clock, uploadPhoto, uploadRecording } from '../parts.tsx';
 
 // What the QR code opens. First visit asks for a name; after that the phone remembers.
 export function Guest({ id }: { id: string }) {
@@ -125,11 +125,11 @@ function NameJoin({ gathering, onJoined }: { gathering: PublicGathering; onJoine
   );
 }
 
-type Tab = 'room' | 'people';
+type Tab = 'now' | 'moments' | 'people';
 
 function Room({ gathering, member }: { gathering: PublicGathering; member: Member }) {
   const room = useRoom(gathering.id, { role: 'guest', memberId: member.id });
-  const [tab, setTab] = useState<Tab>('room');
+  const [tab, setTab] = useState<Tab>('now');
   const { feed, api: roomApi } = room;
 
   if (room.error) return <main className="screen"><p className="error">{room.error}</p></main>;
@@ -157,7 +157,7 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
       <HichkiBack moment={room.hichkiBack} />
       {room.thanks && (
         <p className="banner celebrate" role="status" key={room.thanks.proofId}>
-          {away} said thank you for &ldquo;{room.thanks.requestText}&rdquo;. It&rsquo;s under Already answered.
+          {away} said thank you for &ldquo;{room.thanks.requestText}&rdquo;. It&rsquo;s in Moments.
         </p>
       )}
 
@@ -167,20 +167,20 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
         </a>
       )}
 
-      {tab === 'room' && (
+      {tab === 'now' && (
         <>
-          {/* Hichki is the heart of it, so it always sits at the top, with everyone's hichkis below. */}
+          {/* Hichki is the heart of it, so it always sits at the top. */}
           {feed.flags.hichki && <HichkiButton api={roomApi} awayName={away} />}
-          <HichkiTimeline entries={feed.hichkis ?? []} awayName={away} me={member.id} limit={3} />
           {room.accepted && (
             <p className="banner celebrate" role="status">
-              {away} picked {room.accepted.memberId === member.id ? 'yours' : `${room.accepted.memberName}’s`}. +10
+              {away} picked {room.accepted.memberId === member.id ? 'yours' : `${room.accepted.memberName}\u2019s`}. +10
             </p>
           )}
 
+          {(asks.length > 0 || letters.length > 0) && <h2 className="section-title">Waiting on you</h2>}
           {asks.length === 0 && letters.length === 0 && (
             <section className="card empty">
-              <h2>{earlier.length ? 'Nothing is waiting right now' : `${away} hasn’t asked for anything yet`}</h2>
+              <h2>{earlier.length ? 'Nothing is waiting right now' : `${away} hasn\u2019t asked for anything yet`}</h2>
               <p className="muted">
                 {earlier.length
                   ? `When ${away} asks again, it shows up here on every phone.${feed.flags.hichki ? ' Until then, send a hichki.' : ''}`
@@ -202,49 +202,30 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
           ))}
 
           {feed.flags.jab_kholna &&
-            letters.map((r) => <LetterCard key={r.id} letter={r} proofs={proofsFor(r)} api={roomApi} away={away} me={member.id} />)}
+            letters.filter((r) => r.status !== 'unlocked').map((r) => <LetterCard key={r.id} letter={r} proofs={proofsFor(r)} api={roomApi} away={away} me={member.id} />)}
 
-          {room.hichkiSent && <p className="muted note">{room.hichkiSent.from} sent a hichki at {clock(room.hichkiSent.at)}.</p>}
+          <ActivityStrip feed={feed} me={member.id} />
 
-          <Leaderboard presence={feed.presence} me={member.id} limit={5} />
-
-          {earlier.length > 0 && (
-            <section className="earlier">
-              <h2>Already answered</h2>
-              {earlier.map((r) => {
-                const won = feed.proofs.find((p) => p.id === r.acceptedProofId);
-                return (
-                  <article key={r.id} className="card done-card">
-                    <p className="request-text">{r.text}</p>
-                    {won && <ProofView proof={won} />}
-                    {won && r.kind === 'story' && feed.stories.find((s) => s.requestId === r.id && s.audioUrl === won.url) && (
-                      <StoryWords story={feed.stories.find((s) => s.requestId === r.id && s.audioUrl === won.url)!} />
-                    )}
-                    {won && <p className="muted">{away} picked {won.memberId === member.id ? 'yours' : `${won.memberName}’s`}.</p>}
-                    {won?.thanks && <ThanksView thanks={won.thanks} from={away} />}
-                  </article>
-                );
-              })}
-            </section>
-          )}
-
-          <details className="more-ways">
-            <summary>More ways to bring {away} in</summary>
-            <Stories api={roomApi} stories={feed.stories.filter((st) => !st.requestId)} />
-          </details>
+          <button type="button" className="btn btn-quiet see-moments" onClick={() => setTab('moments')}>
+            See every photo, voice, letter and story
+          </button>
         </>
       )}
+
+      {tab === 'moments' && <Moments feed={feed} api={roomApi} me={member.id} canRecord />}
 
       {tab === 'people' && (
         <>
           <Profile api={roomApi} gatheringId={gathering.id} me={feed.presence.members.find((m) => m.id === member.id) ?? member} />
+          <Leaderboard presence={feed.presence} me={member.id} limit={10} />
           <MemberList presence={feed.presence} me={member.id} />
         </>
       )}
 
       <Tabs<Tab>
         tabs={[
-          ['room', 'Room'],
+          ['now', 'Now'],
+          ['moments', 'Moments'],
           ['people', `People (${feed.presence.members.length})`],
         ]}
         value={tab}

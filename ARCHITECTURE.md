@@ -21,6 +21,13 @@ Hichki is one Node.js server and one mobile-first web page. Everyone at a gather
                  Kubernetes cluster  <--- watched by the NudgeBee agent
 ```
 
+## How the screens are organised
+
+The rule: the home page shows what needs you, plus what just happened. Everything else lives on its own page, by type.
+
+- **Guests: Now · Moments · People.** Now has Hichki at the top, then what's waiting on you (open requests and sealed letters), then **Just now**: the last 15 minutes of activity. If nothing happened in the last 15 minutes, that becomes **Highlights so far**: up to six moments, picked photos first, then opened letters, stories, thank-yous and hichkis that came with a line. Moments has everything so far, by type: Answered, Photos, Voices, Letters, Stories and Hichkis. People has your profile, the leaderboard and who's here.
+- **The away person: Ask · Moments · Letters · People.** Ask has the catch-up, the same Just now strip, duty, the mic and ideas, and their requests.
+
 ## Roles
 
 | Role | Gets in by | Identity |

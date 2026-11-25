@@ -3,11 +3,12 @@ import { ApiError, saved, type Draft, type Feed, type Kind, type Proof, type Req
 import { useRoom, type Hichki } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
 import { CatchUpCard, DutyControl } from '../duty.tsx';
+import { ActivityStrip, Moments } from '../moments.tsx';
 import { ThanksComposer, ThanksView } from '../thanks.tsx';
 import { Yaadein } from './Yaadein.tsx';
-import { HichkiTimeline, StoryWords, Leaderboard, MicIcon, ProofView, RecordButton, Stories, Tabs, ago, clock, uploadRecording } from '../parts.tsx';
+import { StoryWords, Leaderboard, MicIcon, ProofView, RecordButton, Tabs, ago, clock, uploadRecording } from '../parts.tsx';
 
-type Tab = 'ask' | 'letters' | 'people';
+type Tab = 'ask' | 'moments' | 'letters' | 'people';
 
 // The private screen for the person who couldn't come.
 export function Away({ id, token: urlToken }: { id: string; token: string }) {
@@ -48,7 +49,7 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
   if (g.wrappedAt && !inRoom) return <Yaadein id={id} who={{ role: 'away', token }} onRoom={() => setInRoom(true)} />;
 
   const here = feed.presence.members.filter((m) => m.online).length;
-  const tabs: [Tab, string][] = [['ask', 'Ask']];
+  const tabs: [Tab, string][] = [['ask', 'Ask'], ['moments', 'Moments']];
   if (feed.flags.jab_kholna) tabs.push(['letters', 'Letters']);
   tabs.push(['people', `People (${feed.presence.members.length})`]);
 
@@ -68,20 +69,22 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
 
       <HichkiMoment hichki={room.hichki} />
       {feed.catchUp && !caughtUp && <CatchUpCard api={api} feed={feed} catchUp={feed.catchUp} onDone={() => setCaughtUp(true)} />}
-      {tab === 'ask' && <HichkiTimeline entries={feed.hichkis ?? []} awayName="you" limit={3} />}
+      {tab === 'ask' && <ActivityStrip feed={feed} />}
 
       {tab === 'ask' && (
         <>
           <DutyControl api={api} gathering={g} onChange={() => setCaughtUp(false)} />
           <Composer api={api} feed={feed} />
           <MyRequests api={api} feed={feed} now={room.now()} />
-          {feed.stories.some((s) => !s.requestId) && <Stories api={api} stories={feed.stories.filter((s) => !s.requestId)} canRecord={false} />}
-          <Leaderboard presence={feed.presence} limit={5} />
         </>
       )}
       {tab === 'letters' && feed.flags.jab_kholna && <Letters api={api} feed={feed} />}
+      {tab === 'moments' && <Moments feed={feed} api={api} canRecord={false} />}
       {tab === 'people' && (
-        <MemberList presence={feed.presence} onHichki={feed.flags.hichki ? (mid) => api.hichkiBack(mid) : undefined} />
+        <>
+          <Leaderboard presence={feed.presence} limit={10} />
+          <MemberList presence={feed.presence} onHichki={feed.flags.hichki ? (mid) => api.hichkiBack(mid) : undefined} />
+        </>
       )}
 
       <Tabs<Tab> tabs={tabs} value={tab === 'letters' && !feed.flags.jab_kholna ? 'ask' : tab} onChange={setTab} />

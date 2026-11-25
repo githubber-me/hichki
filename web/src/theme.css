@@ -655,3 +655,29 @@ a.btn, a.banner { text-decoration: none; }
 .hichki-timeline li em { color: var(--haldi); font-style: italic; }
 .hichki-timeline time { flex: none; font-size: 12.5px; color: var(--rice-faint); }
 .hichki-timeline .btn { justify-self: start; }
+
+/* ---------- Now: activity strip; Moments: chips and photo grid ---------- */
+.section-title { margin: 6px 0 -4px; font-size: 17px; }
+.activity { display: grid; gap: 10px; }
+.activity h2 { margin: 0; font-size: 17px; display: flex; align-items: baseline; gap: 8px; }
+.activity h2 small { font-family: var(--font-body); font-size: 12.5px; font-weight: 400; color: var(--rice-faint); }
+.activity ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.activity li { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--hand-sm); background: var(--wall-deep); }
+.activity li p { margin: 0; flex: 1; font-size: 15px; line-height: 1.35; color: var(--rice-soft); }
+.activity li em { color: var(--haldi); }
+.activity li img { width: 48px; height: 48px; object-fit: cover; border-radius: var(--hand-sm); flex: none; }
+.activity time { flex: none; font-size: 12.5px; color: var(--rice-faint); }
+.activity.is-highlights li { background: transparent; box-shadow: inset 0 0 0 1.5px var(--rice-faint); }
+.see-moments { justify-self: center; font-size: 15px; }
+.moments { display: grid; gap: 14px; }
+.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+.chips button { flex: none; display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 15px; color: var(--rice-soft); background: transparent; border: 0; border-radius: 999px; padding: 7px 14px; box-shadow: inset 0 0 0 1.5px var(--rice-faint); cursor: pointer; }
+.chips button small { font-size: 12px; color: var(--rice-faint); }
+.chips button.is-active { color: var(--wall); background: var(--rice); box-shadow: none; }
+.chips button.is-active small { color: var(--wall); }
+.photo-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.photo-grid li { display: grid; gap: 4px; }
+.photo-grid .proof-media { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--hand-sm); }
+.photo-grid li.is-picked .proof-media { box-shadow: 0 0 0 3px var(--haldi); }
+.photo-grid p { margin: 0; color: var(--rice-soft); }
+.voice-card { display: grid; gap: 8px; }
