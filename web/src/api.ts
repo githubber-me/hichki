@@ -1,6 +1,6 @@
 // Small helpers for talking to the server and remembering this phone.
 
-export type PublicGathering = { id: string; name: string; occasion: string; awayName: string };
+export type PublicGathering = { id: string; name: string; occasion: string; awayName: string; wrappedAt: number | null };
 export type Member = { id: string; name: string; points: number };
 export type Presence = {
   members: (Member & { online: boolean })[];
@@ -73,6 +73,7 @@ export type Proof = {
 export type Story = {
   id: string;
   teller: string;
+  memberId: string | null;
   status: 'processing' | 'ready' | 'failed';
   error: string | null;
   audioUrl: string;
@@ -158,12 +159,48 @@ export function roomApi(id: string, who: Who) {
       call<{ proof: Proof }>('POST', `/api/requests/${rid}/proofs`, { file, caption }),
     accept: (rid: string, proofId: string) => call<{ request: Req }>('POST', `/api/requests/${rid}/accept`, { proofId }),
     hichki: () => call<{ ok: true }>('POST', `${g}/hichki`),
+    // The host says the celebration is over, or reopens it.
+    wrap: (wrapped: boolean) => call<{ gathering: PublicGathering }>('POST', `${g}/wrap`, { wrapped }),
     addStory: (file: string, teller: string, language?: string, targetLanguage?: string) =>
       call<Story>('POST', `${g}/stories`, { file, teller, language, targetLanguage }),
   };
 }
 
 export type RoomApi = ReturnType<typeof roomApi>;
+
+// ---------------------------------------------------------------------------
+// Yaadein: the page a celebration leaves behind.
+// ---------------------------------------------------------------------------
+
+export type Tap = { from: string; memberId: string | null; at: number };
+
+export type Keepsake = {
+  gathering: PublicGathering;
+  viewer: Role | 'visitor';
+  key: string | null; // for the read-only link; only the host and the away person get it
+  people: Member[];
+  requests: Req[];
+  proofs: Proof[];
+  stories: Story[];
+  hichkis: Tap[];
+  now: number;
+};
+
+// Someone from the gathering, or anyone holding the read-only key from a shared link.
+export type KeepsakeWho = Who | { role: 'visitor'; key: string };
+
+export async function getKeepsake(id: string, who: KeepsakeWho): Promise<Keepsake> {
+  const headers: Record<string, string> =
+    who.role === 'guest'
+      ? { 'x-hichki-member': who.memberId }
+      : who.role === 'visitor'
+        ? { 'x-hichki-keepsake': who.key }
+        : { 'x-hichki-token': who.token };
+  const res = await fetch(`/api/gatherings/${id}/keepsake`, { headers });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new ApiError(data.error ?? 'Something went wrong. Try again.', res.status);
+  return data as Keepsake;
+}
 
 // Carries the HTTP status, so screens can tell "switched off" (409) from "try again".
 export class ApiError extends Error {

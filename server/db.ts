@@ -3,7 +3,7 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { randomBytes, randomInt } from 'node:crypto';
+import { createHmac, randomBytes, randomInt } from 'node:crypto';
 import { config } from './config.ts';
 
 mkdirSync(config.dataDir, { recursive: true });
@@ -89,7 +89,24 @@ db.exec(`
     error            TEXT,
     created_at       INTEGER NOT NULL
   );
+
+  -- Every hichki tap, kept so the yaadein page can show each time someone remembered.
+  CREATE TABLE IF NOT EXISTS hichkis (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    gathering_id  TEXT NOT NULL REFERENCES gatherings(id),
+    member_id     TEXT REFERENCES members(id),
+    from_name     TEXT NOT NULL,
+    created_at    INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS hichkis_by_gathering ON hichkis (gathering_id, created_at);
 `);
+
+// wrapped_at: when the host said the celebration is over. Added after the first
+// gatherings were created, so older database files get the column here.
+const gatheringColumns = db.prepare('PRAGMA table_info(gatherings)').all() as { name: string }[];
+if (!gatheringColumns.some((c) => c.name === 'wrapped_at')) {
+  db.exec('ALTER TABLE gatherings ADD COLUMN wrapped_at INTEGER');
+}
 
 export type Gathering = {
   id: string;
@@ -99,6 +116,7 @@ export type Gathering = {
   host_token: string;
   away_token: string;
   created_at: number;
+  wrapped_at: number | null;
 };
 
 export type Member = {
@@ -132,6 +150,7 @@ export function createGathering(name: string, occasion: string, awayName: string
     host_token: secret(),
     away_token: secret(),
     created_at: Date.now(),
+    wrapped_at: null,
   };
   db.prepare(
     `INSERT INTO gatherings (id, name, occasion, away_name, host_token, away_token, created_at)
@@ -150,6 +169,18 @@ export function createGathering(name: string, occasion: string, awayName: string
 
 export function getGathering(id: string): Gathering | undefined {
   return db.prepare('SELECT * FROM gatherings WHERE id = ?').get(id) as Gathering | undefined;
+}
+
+// Wrapping up doesn't lock anything. It only says the celebration is over, so
+// the away person's link opens on their yaadein. Passing null reopens it.
+export function setWrapped(id: string, at: number | null) {
+  db.prepare('UPDATE gatherings SET wrapped_at = ? WHERE id = ?').run(at, id);
+}
+
+// The key in the read-only yaadein link. It is worked out from the two private
+// tokens, so it can't be guessed and can't be turned back into either of them.
+export function keepsakeKey(g: Gathering): string {
+  return createHmac('sha256', g.host_token).update(`yaadein:${g.id}:${g.away_token}`).digest('hex').slice(0, 24);
 }
 
 // Joining twice from the same phone returns the same member (and updates the name).
@@ -404,6 +435,27 @@ export function listStories(gatheringId: string): StoryRow[] {
   return db
     .prepare('SELECT * FROM stories WHERE gathering_id = ? ORDER BY created_at ASC')
     .all(gatheringId) as StoryRow[];
+}
+
+// ---------------------------------------------------------------------------
+// Hichkis
+// ---------------------------------------------------------------------------
+
+export type HichkiRow = { id: number; gathering_id: string; member_id: string | null; from_name: string; created_at: number };
+
+export function addHichki(gatheringId: string, memberId: string | null, fromName: string, at = Date.now()) {
+  db.prepare('INSERT INTO hichkis (gathering_id, member_id, from_name, created_at) VALUES (?, ?, ?, ?)').run(
+    gatheringId,
+    memberId,
+    fromName,
+    at,
+  );
+}
+
+export function listHichkis(gatheringId: string): HichkiRow[] {
+  return db
+    .prepare('SELECT * FROM hichkis WHERE gathering_id = ? ORDER BY created_at ASC')
+    .all(gatheringId) as HichkiRow[];
 }
 
 export function ping(): boolean {

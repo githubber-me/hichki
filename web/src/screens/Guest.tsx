@@ -102,6 +102,12 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
         </p>
       </header>
 
+      {feed.gathering.wrappedAt && (
+        <a className="banner" href={`/g/${gathering.id}/yaadein`}>
+          That&rsquo;s a wrap. See everything {away} was part of
+        </a>
+      )}
+
       {tab === 'room' && (
         <>
           {room.accepted && (

@@ -7,7 +7,7 @@ import { mediaOf, mediaUrl } from './files.ts';
 export type Viewer = 'room' | 'away';
 
 export function gatheringView(g: Gathering) {
-  return { id: g.id, name: g.name, occasion: g.occasion, awayName: g.away_name };
+  return { id: g.id, name: g.name, occasion: g.occasion, awayName: g.away_name, wrappedAt: g.wrapped_at ?? null };
 }
 
 // Returns null when this viewer shouldn't see the request at all.

@@ -7,6 +7,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { app, log } from './app.ts';
 import {
+  addHichki,
   addPoints,
   createGathering,
   createProof,
@@ -18,6 +19,9 @@ import {
   getRequest,
   getStory,
   joinGathering,
+  keepsakeKey,
+  listHichkis,
+  listMembers,
   listProofs,
   listRequests,
   listStories,
@@ -25,6 +29,7 @@ import {
   ping,
   setRequestStatus,
   setRequestTranscript,
+  setWrapped,
   updateStory,
   type Gathering,
   type Member,
@@ -424,10 +429,60 @@ app.post('/api/gatherings/:id/hichki', async (req) => {
 
   const from = c.role === 'guest' ? c.member.name : 'The host';
   const payload = { from, at: Date.now() };
+  addHichki(g.id, c.role === 'guest' ? c.member.id : null, from, payload.at);
   req.log.info({ event: 'hichki', gatheringId: g.id }, 'hichki sent');
   emitAway(g.id, 'hichki', payload);
   emitAll(g.id, 'hichki:sent', payload);
   return { ok: true };
+});
+
+// ---------------------------------------------------------------------------
+// Yaadein: what the celebration leaves behind. One page with every answered
+// request, opened letter, story and hichki, in the order they happened.
+// ---------------------------------------------------------------------------
+
+// The host says the celebration is over (or reopens it). Nothing is locked; the
+// away person's link simply opens on their yaadein from now on.
+app.post('/api/gatherings/:id/wrap', async (req) => {
+  const g = findGathering((req.params as { id: string }).id);
+  requireCaller(req, g, 'host');
+  const body = (req.body ?? {}) as Record<string, unknown>;
+
+  setWrapped(g.id, body.wrapped === false ? null : (g.wrapped_at ?? Date.now()));
+  const updated = findGathering(g.id);
+  req.log.info({ event: updated.wrapped_at ? 'gathering_wrapped' : 'gathering_reopened', gatheringId: g.id }, 'wrap changed');
+  emitAll(g.id, 'gathering', gatheringView(updated));
+  return { gathering: gatheringView(updated) };
+});
+
+// Anyone from the gathering can read the yaadein. So can anyone holding the
+// read-only key (x-hichki-keepsake), which lets them look and nothing else.
+app.get('/api/gatherings/:id/keepsake', async (req) => {
+  const g = findGathering((req.params as { id: string }).id);
+  const c = caller(req, g);
+  const key = keepsakeKey(g);
+  if (!c && req.headers['x-hichki-keepsake'] !== key) {
+    throw new HttpError(401, 'This link is incomplete. Ask whoever sent it to send it again.');
+  }
+
+  // Only the away person sees what the room hasn't seen yet, the same as in the feed.
+  const viewer = c?.role === 'away' ? 'away' : 'room';
+  const people = listMembers(g.id);
+  const names = new Map(people.map((m) => [m.id, m.name]));
+  return {
+    gathering: gatheringView(g),
+    viewer: c?.role ?? 'visitor',
+    // The host and the away person can pass the page on; guests and visitors can't.
+    key: c?.role === 'host' || c?.role === 'away' ? key : null,
+    people: people.map((m) => ({ id: m.id, name: m.name, points: m.points })),
+    requests: listRequests(g.id)
+      .map((r) => requestView(r, viewer))
+      .filter((r) => r !== null),
+    proofs: listProofs(g.id).map((p) => proofView(p, names.get(p.member_id) ?? 'Someone')),
+    stories: listStories(g.id).map(storyView),
+    hichkis: listHichkis(g.id).map((h) => ({ from: h.from_name, memberId: h.member_id, at: h.created_at })),
+    now: Date.now(),
+  };
 });
 
 // ---------------------------------------------------------------------------

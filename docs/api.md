@@ -11,6 +11,7 @@ There are no accounts. Each caller identifies itself with one header:
 | Guest | `x-hichki-member: MEMBER_ID` | `member.id` returned by join, kept in `localStorage` |
 | Host | `x-hichki-token: HOST_TOKEN` | `hostToken` returned when the gathering was created |
 | Away person | `x-hichki-token: AWAY_TOKEN` | the `t` parameter in their private link |
+| Visitor | `x-hichki-keepsake: KEY` | the `k` parameter in a shared yaadein link. Read-only: it works on `GET /keepsake` and nothing else |
 
 Errors always come back as `{ "error": "A sentence you can show the person." }` with a 4xx or 5xx status.
 
@@ -23,7 +24,8 @@ Times are epoch milliseconds. Requests accept either milliseconds or an ISO stri
 | Create a gathering | `/` |
 | Guest (the QR code) | `/g/CODE` |
 | Host | `/g/CODE/host?t=HOST_TOKEN` |
-| Away person | `/g/CODE/away?t=AWAY_TOKEN` |
+| Away person | `/g/CODE/away?t=AWAY_TOKEN`. Once the host wraps up, this opens on the yaadein, with the room one tap away |
+| Yaadein (what the celebration leaves behind) | `/g/CODE/yaadein?k=KEY` for anyone the link is sent to. People from the gathering can open `/g/CODE/yaadein` as themselves; the host and the away person can also arrive with `?t=TOKEN`, which the page swaps for `?k=KEY` in the address bar so a copied address never carries a private token |
 
 ## Start of a session
 
@@ -33,7 +35,8 @@ Times are epoch milliseconds. Requests accept either milliseconds or an ISO stri
 ```jsonc
 // GET /api/gatherings/:id/feed
 {
-  "gathering": { "id": "B3WV77", "name": "Priya and Aman's wedding", "occasion": "wedding", "awayName": "Meera" },
+  "gathering": { "id": "B3WV77", "name": "Priya and Aman's wedding", "occasion": "wedding", "awayName": "Meera",
+                 "wrappedAt": null },   // when the host wrapped up, else null
   "role": "guest",                      // guest | host | away
   "me": { "id": "...", "name": "Arjun", "points": 10 },   // guests only, else null
   "flags": { "hichki": true, "jab_kholna": true, "ai_requests": true },
@@ -130,6 +133,34 @@ A letter needs `audioFile` or `text`, and `openWhen` or `unlockAt`. Letters retu
 - 409 while the `hichki` flag is off.
 - 429 if the same person taps again within 3 seconds. The message can be shown as is.
 
+Every tap is stored (who and when), so the yaadein page can show each time someone remembered.
+
+## Yaadein (what the celebration leaves behind)
+
+One page with every answered request, opened letter, story and hichki, in the order they happened. It can be read at any time and fills in as the celebration goes.
+
+| Route | Who | Body | Returns |
+| --- | --- | --- | --- |
+| `POST /api/gatherings/:id/wrap` | host | `{ wrapped: true }` (or `false` to reopen) | `{ gathering }` with `wrappedAt` set. Nothing is locked; from now on the away person's link opens on the yaadein. |
+| `GET /api/gatherings/:id/keepsake` | guest, host, away, or a visitor with the key | | see below |
+
+```jsonc
+// GET /api/gatherings/:id/keepsake
+{
+  "gathering": { "id": "B3WV77", "name": "...", "occasion": "wedding", "awayName": "Meera", "wrappedAt": 1795585534424 },
+  "viewer": "away",                 // guest | host | away | visitor. The page says "you" to the away person.
+  "key": "d630c2...",               // for the read-only link; host and away only, else null
+  "people": [{ "id": "...", "name": "Arjun", "points": 10 }],
+  "requests": [Request],            // same views as the feed: only the away person sees scheduled ones and sealed letters
+  "proofs": [Proof],
+  "stories": [Story],
+  "hichkis": [{ "from": "Arjun", "memberId": "...", "at": 1795585534424 }],
+  "now": 1795585534424
+}
+```
+
+The key is worked out from the gathering's two private tokens (HMAC), so it can't be guessed and can't be turned back into either of them.
+
 ## Stories (Dadi ki kahani)
 
 ```jsonc
@@ -163,6 +194,7 @@ io({ auth: { gatheringId, role: 'away', token } })       // away person
 | Event | Who gets it | Payload | Meaning |
 | --- | --- | --- | --- |
 | `flags` | everyone | `{ hichki, jab_kholna, ai_requests }` | On connect, and whenever a flag is flipped in Flagsmith. Show or hide features straight away. |
+| `gathering` | everyone | `{ id, name, occasion, awayName, wrappedAt }` | The host wrapped up or reopened the gathering. |
 | `presence` | everyone | `{ members, awayOnline }` | Who is here, and points for the leaderboard (members are sorted by points). |
 | `request` | everyone, each with their own view | Request | New or changed request. Replace by `id`. Guests first see a scheduled request when it goes live. |
 | `proof` | everyone | Proof | Someone sent proof. |

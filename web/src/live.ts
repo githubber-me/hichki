@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
-import { roomApi, type Feed, type Flags, type Presence, type Proof, type Req, type Story, type Who } from './api.ts';
+import { roomApi, type Feed, type Flags, type Presence, type Proof, type PublicGathering, type Req, type Story, type Who } from './api.ts';
 
 export type Hichki = { from: string; at: number };
 export type Accepted = { requestId: string; proofId: string; memberId: string; memberName: string; points: number };
@@ -45,6 +45,7 @@ export function useRoom(id: string, who: Who | null) {
     socket.on('disconnect', () => setConnected(false));
     socket.on('fatal', (e: { error: string }) => setError(e.error));
     socket.on('flags', (flags: Flags) => patch((f) => ({ ...f, flags })));
+    socket.on('gathering', (gathering: PublicGathering) => patch((f) => ({ ...f, gathering })));
     socket.on('presence', (presence: Presence) =>
       patch((f) => {
         const mine = f.me && presence.members.find((m) => m.id === f.me!.id);

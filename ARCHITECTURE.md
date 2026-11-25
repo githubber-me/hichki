@@ -29,6 +29,8 @@ Hichki is one Node.js server and one mobile-first web page. Everyone at a gather
 | Guest | Scanning the gathering's QR code and typing a name | A random device id kept in the browser |
 | Away | Opening the private away link | A secret token in the link |
 
+Anyone sent the yaadein link (see flow 4) can look at that one page and do nothing else.
+
 There are no accounts or passwords.
 
 ## Gatherings last for days
@@ -74,17 +76,27 @@ A guest taps the button. The server forwards it to the away person's open page, 
 2. Sarvam transcribes it in the spoken language and translates it.
 3. Everyone can play the original voice next to the transcript and translation.
 
+**4. Yaadein** (what the celebration leaves behind)
+
+1. All through the celebration, everything that happens is already being kept: answered requests with the photos and voice notes sent for them, opened letters, stories, and every hichki tap.
+2. `/g/CODE/yaadein` draws it as one page, oldest first and grouped by day: the ring of dancers with the number of hichkis in the middle, then one dotted path with every moment on it, then who did what. A button replays it from start to end, scrolling to each moment and playing its voice.
+3. When it is over, the host taps **Wrap up**. Nothing is locked. Every phone hears about it, and the away person's own link now opens on the yaadein instead of the room.
+4. The host and the away person can pass the page on. The shared link carries a read-only key, worked out from the gathering's two private tokens, that opens this page and nothing else.
+
+Requests nobody answered are left off the page on purpose. It is a record of what happened.
+
 ## Data model
 
 | Table | Fields |
 | --- | --- |
-| gatherings | id, name, occasion, away_name, host_token, away_token, created_at |
+| gatherings | id, name, occasion, away_name, host_token, away_token, created_at, wrapped_at |
 | members | id, gathering_id, device_id, name, points, created_at |
 | requests | id, gathering_id, kind (`see`, `do`, `letter`), text, audio_path, language, live_at, until, open_when, status, accepted_proof_id |
 | proofs | id, request_id, member_id, file_path, created_at |
 | stories | id, gathering_id, teller, audio_path, language, transcript, translation |
+| hichkis | id, gathering_id, member_id, from_name, created_at |
 
-Hichki taps are live events and are not stored.
+Every hichki tap is stored, so the yaadein page can show each time someone remembered.
 
 ## Sponsor tools
 

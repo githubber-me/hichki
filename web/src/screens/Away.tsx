@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ApiError, saved, type Draft, type Feed, type Kind, type Proof, type Req, type RoomApi } from '../api.ts';
 import { useRoom, type Hichki } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
+import { Yaadein } from './Yaadein.tsx';
 import { Leaderboard, MicIcon, ProofView, RecordButton, Stories, Tabs, ago, clock, uploadRecording } from '../parts.tsx';
 
 type Tab = 'ask' | 'letters' | 'stories' | 'people';
@@ -11,6 +12,7 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
   const token = urlToken || saved.awayToken(id) || '';
   const room = useRoom(id, token ? { role: 'away', token } : null);
   const [tab, setTab] = useState<Tab>('ask');
+  const [inRoom, setInRoom] = useState(false);
   const { feed, api } = room;
 
   useEffect(() => {
@@ -22,6 +24,11 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
   if (!feed || !api) return <main className="screen"><p className="muted">Loading&hellip;</p></main>;
 
   const g = feed.gathering;
+
+  // Once the host wraps up, this same link opens on what the celebration left behind.
+  // The room is still there underneath, one tap away.
+  if (g.wrappedAt && !inRoom) return <Yaadein id={id} who={{ role: 'away', token }} onRoom={() => setInRoom(true)} />;
+
   const here = feed.presence.members.filter((m) => m.online).length;
   const tabs: [Tab, string][] = [['ask', 'Ask']];
   if (feed.flags.jab_kholna) tabs.push(['letters', 'Letters']);
@@ -36,6 +43,9 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
           <span className={`dot ${here ? 'on' : ''}`} aria-hidden="true" />
           {here ? `${here} ${here === 1 ? 'person is' : 'people are'} there right now` : 'Nobody has the page open right now'}
         </p>
+        <a className="yaad-link" href={`/g/${id}/yaadein?t=${token}`}>
+          {g.wrappedAt ? 'Your yaadein' : 'Your yaadein so far'}
+        </a>
       </header>
 
       <HichkiMoment hichki={room.hichki} />

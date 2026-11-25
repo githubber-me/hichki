@@ -453,6 +453,75 @@ form .btn, .card > .btn, .composer .btn { width: 100%; }
 /* A light margin of about four QR dots, so every phone camera can find the code. */
 .qr-frame svg { background: var(--rice); padding: 16px; border-radius: 5px; }
 
+/* ---------- Yaadein: what the celebration leaves behind ----------
+   The cover is the ring of dancers again, with the count of hichkis painted in
+   the middle. Under it, one dotted path runs down the wall and every moment
+   hangs off it, in the order it happened. */
+
+a.btn, a.banner { text-decoration: none; }
+.yaad-link { justify-self: start; color: var(--haldi); font-family: var(--font-display); font-size: 17px; text-decoration: underline dotted; text-underline-offset: 5px; }
+
+.yaad-cover { display: grid; justify-items: center; text-align: center; gap: 7px; }
+.yaad-cover .status { display: inline-flex; max-width: 300px; text-align: left; line-height: 1.3; }
+.yaad-ring { position: relative; display: grid; place-items: center; margin: 4px 0 6px; }
+.yaad-ring .hero-art { width: min(296px, 76vw); }
+/* A patch of bare wall in the middle of the ring, so the number has room. */
+.yaad-count {
+  position: absolute;
+  width: 56%;
+  aspect-ratio: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 2px;
+  border-radius: 50%;
+  background: var(--wall) var(--plaster);
+  color: var(--haldi);
+  line-height: 1;
+  animation: pop 0.7s 1.5s var(--spring) both;
+}
+.yaad-count b { font-family: var(--font-display); font-weight: 400; font-size: 70px; font-variant-numeric: tabular-nums; }
+.yaad-count span { font-family: var(--font-display); font-size: 17px; }
+
+.yaad-tally { list-style: none; margin: 0; padding: 26px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 16px 14px; background: var(--zigzag) repeat-x left top / 24px 12px, var(--zigzag) repeat-x left bottom / 24px 12px; }
+.yaad-tally li { display: grid; font-size: 15px; line-height: 1.25; color: var(--rice-soft); }
+.yaad-tally b { font-family: var(--font-display); font-weight: 400; font-size: 36px; line-height: 1; color: var(--rice); font-variant-numeric: tabular-nums; }
+
+.yaad-day { display: grid; gap: 16px; }
+.yaad-day > h2 { color: var(--haldi); }
+.yaad-line { list-style: none; margin: 0; padding: 0 0 0 28px; display: grid; gap: 30px; position: relative; }
+.yaad-line::before { content: ''; position: absolute; left: 4px; top: 8px; bottom: 0; width: 8px; background: radial-gradient(circle, var(--rice-faint) 2.4px, transparent 3px) center top / 8px 13px repeat-y; }
+.yaad-moment { position: relative; display: grid; gap: 9px; scroll-margin: 90px 0; }
+.yaad-moment::before { content: ''; position: absolute; left: -28px; top: 1px; width: 16px; height: 16px; border-radius: 50%; background: var(--wall); box-shadow: inset 0 0 0 3px var(--rice); transition: background 0.3s, box-shadow 0.3s; }
+.yaad-moment.is-hichkis::before { background: var(--haldi); box-shadow: none; }
+.yaad-moment figure { margin: 0; display: grid; gap: 6px; }
+.yaad-moment figcaption { font-size: 14.5px; color: var(--rice-soft); }
+.yaad-moment .request-text { font-size: 25px; }
+.yaad-words { font-size: 17px; padding-left: 12px; border-left: 3px solid var(--rice-faint); }
+.yaad-voice { display: grid; gap: 3px; }
+
+/* The moment being replayed is lit like a lamp. */
+.yaad-moment.is-lit::before { background: var(--haldi); box-shadow: none; animation: lamp 1.6s ease-out infinite; }
+.yaad-moment.is-lit .eyebrow { color: var(--haldi); }
+.yaad-moment.is-lit .proof-media { border-color: var(--haldi); }
+
+/* One dot of haldi for every time someone tapped. */
+.yaad-dots { display: flex; flex-wrap: wrap; gap: 6px; }
+.yaad-dots i { width: 12px; height: 12px; border-radius: 50%; background: var(--haldi); animation: pop 0.5s var(--spring) both; }
+
+.yaad-others { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.yaad-others li { display: grid; gap: 3px; font-size: 13.5px; color: var(--rice-soft); min-width: 0; }
+.yaad-others .proof-media { aspect-ratio: 1; max-height: none; border-width: 1.5px; }
+
+.yaad-people { display: grid; gap: 12px; padding-top: 22px; background: var(--zigzag) repeat-x left top / 24px 12px; }
+.yaad-people ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.yaad-people li { display: grid; }
+.yaad-people b { font-family: var(--font-display); font-weight: 400; font-size: 21px; }
+
+.yaad-keep { display: grid; gap: 10px; text-align: center; }
+.yaad-keep .btn { width: 100%; }
+.yaad-bar button { max-width: 340px; font-size: 17px; }
+
 /* ---------- Occasions ----------
    A gathering's occasion is set as data-occasion on <html>. Each one can swap
    the wall colour and the art without touching any screen. Only the wedding

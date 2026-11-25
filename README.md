@@ -38,6 +38,8 @@ She wasn't there. But she was part of it.
 
 **Dadi ki kahani** (grandma's story). An elder tells a story in their own language. Punjabi, Kannada, Bengali, any of them. Family anywhere in the world can hear her voice and read the story in the language they understand.
 
+**Yaadein** (memories). When the celebration ends, nothing disappears. The host taps "wrap up", and the same link you used all week opens on one page: everything you asked for and what came back, the letters that opened, Dadi's story, and a dot for every single time someone thought of you. Tap once and it plays back from the first day to the last. You can send that page to anyone, and they can only look.
+
 ## How people use it
 
 **If you're hosting,** you create the gathering in a few seconds. You get a QR code to put on the table and a private link to send the person who couldn't come.
@@ -77,6 +79,7 @@ By the end of the day, these are our goals:
 - [ ] One tap sends a hichki across the world
 - [ ] Voice letters unlock when their moment comes
 - [ ] An elder's story can be heard and read in another language
+- [ ] When it's over, everything that happened is kept on one page to relive and share
 
 We'll tick these off as they start working.
 
