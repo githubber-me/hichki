@@ -223,6 +223,17 @@ io({ auth: { gatheringId, role: 'away', token } })       // away person
 
 Phones that were closed miss events. When a page becomes visible again, fetch the feed again.
 
+## Duty pe and the away person's clock
+
+| Route | Who | Body | Returns |
+| --- | --- | --- | --- |
+| `POST /api/gatherings/:id/duty` | away | `{ until, note? }`, or `{ until: null }` to come off duty | `{ gathering }`. Up to three days ahead. While on duty, hichkis are stored but not sent to the away person. |
+| `POST /api/gatherings/:id/seen` | away | | `{ ok }`. The away person has read the catch-up. |
+| `POST /api/gatherings/:id/away-tz` | away | `{ tz }` (IANA, e.g. `America/Toronto`) | `{ ok }`. Sent by the away person's phone, so the room can show their clock. |
+| `POST /api/gatherings/:id/hichki-back` | away | `{ memberId }` | `{ ok }`. That guest's phones get `hichki:back` `{ from, at }`. Same 3 second cooldown per guest. |
+
+`gathering` now carries `awayTz` and `duty` (`{ from, until, note }` while on duty, else `null`). The away person's feed carries `catchUp`: `{ since, wasOnDuty, dutyNote, hichkis, answered, stories }`, everything since their last visit or the start of their last duty, or `null` when there's nothing new or they're still on duty. `hichki:sent` carries `held: true` when the away person is on duty.
+
 ## Health
 
 | Route | Meaning |

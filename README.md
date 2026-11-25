@@ -66,7 +66,7 @@ Each one appears at the gathering exactly when she wanted it to. Her link keeps 
 
 Hichki works for any gathering where someone is missing: Diwali at home, Christmas dinner, New Year's Eve, Eid, a family trip, a birthday.
 
-It also works for the people who keep the world running while everyone else celebrates. The nurse on a night shift. The soldier at a posting. The delivery rider working through the holiday. We call this **Duty pe** (on duty). They can't be there, but they don't have to miss it.
+It also works for the people who keep the world running while everyone else celebrates. The nurse on a night shift. The soldier at a posting. The delivery rider working through the holiday. We call this **Duty pe** (on duty). One tap tells the room you're on a shift until 6 AM. Nothing buzzes you at work: every hichki is kept, and when your shift ends you see who thought of you, and what you missed, first. They can't be there, but they don't have to miss it.
 
 ## What we're building today
 

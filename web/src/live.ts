@@ -16,6 +16,8 @@ export function useRoom(id: string, who: Who | null) {
   const [hichki, setHichki] = useState<Hichki | null>(null);
   const [hichkiSent, setHichkiSent] = useState<Hichki | null>(null);
   const [accepted, setAccepted] = useState<Accepted | null>(null);
+  // Hichki back: the away person thought of this guest.
+  const [hichkiBack, setHichkiBack] = useState<Hichki | null>(null);
   // Difference between the server's clock and this phone's, for countdowns.
   const skew = useRef(0);
 
@@ -53,7 +55,11 @@ export function useRoom(id: string, who: Who | null) {
     socket.on('packs', (all: Record<string, PackItem[]>) =>
       patch((f) => (f.role === 'away' ? { ...f, packs: all[f.gathering.occasion.toLowerCase()] ?? all.gathering ?? f.packs } : f)),
     );
-    socket.on('gathering', (gathering: PublicGathering) => patch((f) => ({ ...f, gathering })));
+    socket.on('gathering', (gathering: PublicGathering) => {
+      patch((f) => ({ ...f, gathering }));
+      // Duty ended or wrap-up changed: the away person's catch-up may have something new.
+      if (who.role === 'away') load();
+    });
     socket.on('presence', (presence: Presence) =>
       patch((f) => {
         const mine = f.me && presence.members.find((m) => m.id === f.me!.id);
@@ -66,14 +72,17 @@ export function useRoom(id: string, who: Who | null) {
     socket.on('accepted', setAccepted);
     socket.on('hichki', setHichki);
     socket.on('hichki:sent', setHichkiSent);
+    socket.on('hichki:back', setHichkiBack);
 
     // A phone that was closed missed events, so fetch everything again when it comes back.
     const onVisible = () => document.visibilityState === 'visible' && load();
     document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('hichki:reload', load);
 
     return () => {
       alive = false;
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('hichki:reload', load);
       socket.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -85,7 +94,7 @@ export function useRoom(id: string, who: Who | null) {
     if (occasion) document.documentElement.dataset.occasion = occasion;
   }, [occasion]);
 
-  return { feed, api, connected, error, hichki, hichkiSent, accepted, now: () => Date.now() + skew.current };
+  return { feed, api, connected, error, hichki, hichkiSent, hichkiBack, accepted, now: () => Date.now() + skew.current };
 }
 
 export type Room = ReturnType<typeof useRoom>;

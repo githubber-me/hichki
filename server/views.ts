@@ -7,7 +7,18 @@ import { mediaOf, mediaUrl } from './files.ts';
 export type Viewer = 'room' | 'away';
 
 export function gatheringView(g: Gathering) {
-  return { id: g.id, name: g.name, occasion: g.occasion, awayName: g.away_name, wrappedAt: g.wrapped_at ?? null, verified: !!g.verified };
+  return {
+    id: g.id,
+    name: g.name,
+    occasion: g.occasion,
+    awayName: g.away_name,
+    wrappedAt: g.wrapped_at ?? null,
+    verified: !!g.verified,
+    // The away person's timezone, so the room can show their clock.
+    awayTz: g.away_tz,
+    // Duty pe: shown to the room as "on duty until 6 AM".
+    duty: g.duty_until && g.duty_from && g.duty_until > Date.now() ? { from: g.duty_from, until: g.duty_until, note: g.duty_note } : null,
+  };
 }
 
 // Returns null when this viewer shouldn't see the request at all.

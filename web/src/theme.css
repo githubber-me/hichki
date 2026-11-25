@@ -588,3 +588,19 @@ a.btn, a.banner { text-decoration: none; }
 .idea::before { content: ''; position: absolute; left: 10px; top: 13px; width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--haldi); }
 .idea-do::before { border-radius: 2px; transform: rotate(45deg); }
 .idea:active { transform: scale(0.98); }
+
+/* ---------- Duty pe, the away person's clock, catch-up ---------- */
+.away-clock { margin: 4px 0 0; font-size: 14px; color: var(--haldi); letter-spacing: 0.01em; }
+.duty-banner { text-align: left; line-height: 1.4; }
+.duty-open { justify-self: center; font-size: 15px; }
+.duty-card { display: grid; gap: 10px; }
+.duty-card.is-on { box-shadow: inset 0 0 0 2px var(--haldi); }
+.duty-card h2 { margin: 0; }
+.catch-up { display: grid; gap: 14px; box-shadow: inset 0 0 0 2px var(--haldi); }
+.catch-up-hichki { display: flex; gap: 12px; align-items: center; }
+.catch-up-hichki .hichki-art { flex: none; }
+.catch-up-hichki p { margin: 0; }
+.catch-up-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.catch-up-list li { display: flex; gap: 10px; align-items: center; }
+.catch-up-list img { width: 52px; height: 52px; object-fit: cover; border-radius: var(--hand-sm); flex: none; }
+.catch-up-list small { color: var(--rice-soft); }

@@ -35,6 +35,16 @@ There are no passwords. Names are unique within a gathering, and the host can re
 
 **Verified gatherings (optional).** A host can turn on *Only verified guests*, when creating the gathering or later. Guests then sign in through [Clerk](https://clerk.com) with Google or a phone number, and the server checks Clerk's session token and takes the name and photo from the account, so a name can't be typed in to pass as someone else. One account is one member. Every guest, signed in or not, can change their name or add, change or remove their photo from the People tab; a signed-in guest stays verified, and their choice is kept on other phones. The sign-in code is loaded only for verified gatherings, so open gatherings stay as fast and as sign-up-free as before. Clerk is called from [server/auth.ts](server/auth.ts) only to check who signed in; everything after that uses the member id, like any other guest.
 
+## Duty pe
+
+For the person who can't follow along because they're working through it: a nurse on shift, a soldier at a posting, a delivery rider.
+
+- The away person taps **Go on duty** and picks how long, with an optional note. The room sees "Meera is on duty: night shift at the hospital, until 6 am their time".
+- While on duty, hichkis are stored but not sent, so nothing buzzes at work. When duty ends, the away person first sees **While you were on duty**: who thought of them and how often, which requests were answered (with the picked photos), and new stories.
+- The same catch-up appears after any absence ("While you were away"), since the last time their page was open.
+- The away person's phone reports its timezone, so the room sees "It's 4:12 am for Meera in Toronto" whenever their clocks differ.
+- **Hichki back**: the away person can send a hichki to one particular guest from the People tab.
+
 ## Gatherings last for days
 
 Weddings and festivals run over several days, so a gathering never expires on its own.

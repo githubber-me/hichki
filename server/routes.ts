@@ -40,11 +40,16 @@ import {
   removeMember,
   updateProfile,
   setVerified,
+  onDuty,
+  setDuty,
+  markAwaySeen,
+  setAwayTz,
+  listHichkisSince,
 } from './db.ts';
 import { isOwnFile, mediaOf, mediaUrl, saveUpload, UploadError } from './files.ts';
 import { flagStatus, flags, packs, requestMode, trackFulfilled } from './flags.ts';
 import { packFor } from './packs.ts';
-import { broadcastPresence, disconnectMember, emitAll, emitAway, onlineMemberIds, presence, publishRequest } from './live.ts';
+import { broadcastPresence, disconnectMember, emitAll, emitAway, emitToMember, onlineMemberIds, presence, publishRequest } from './live.ts';
 import { sarvamEnabled, SarvamError, toCard, transcribe, translate } from './sarvam.ts';
 import { signedInGuest, signInEnabled, SignInError } from './auth.ts';
 import { config } from './config.ts';
@@ -319,6 +324,8 @@ app.get('/api/gatherings/:id/feed', async (req) => {
     flags: flags(),
     // Ready-made requests for this occasion (away person only).
     packs: c.role === 'away' ? packFor(packs(), g.occasion) : [],
+    // "While you were away" for the away person (null when there's nothing to show).
+    catchUp: c.role === 'away' ? catchUp(g) : null,
     presence: presence(g.id),
     requests: listRequests(g.id)
       .map((r) => requestView(r, viewer))
@@ -547,9 +554,94 @@ app.post('/api/gatherings/:id/hichki', async (req) => {
   const from = c.role === 'guest' ? c.member.name : 'The host';
   const payload = { from, at: Date.now() };
   addHichki(g.id, c.role === 'guest' ? c.member.id : null, from, payload.at);
-  req.log.info({ event: 'hichki', gatheringId: g.id }, 'hichki sent');
-  emitAway(g.id, 'hichki', payload);
-  emitAll(g.id, 'hichki:sent', payload);
+  // Duty pe: while the away person is on duty, hichkis are kept for later, not buzzed.
+  const held = onDuty(g);
+  req.log.info({ event: 'hichki', gatheringId: g.id, held }, 'hichki sent');
+  if (!held) emitAway(g.id, 'hichki', payload);
+  emitAll(g.id, 'hichki:sent', { ...payload, held });
+  return { ok: true };
+});
+
+// ---------------------------------------------------------------------------
+// Duty pe: for someone working through the celebration (a shift, a posting).
+// ---------------------------------------------------------------------------
+
+// Since when to catch the away person up: their last visit, or the start of
+// their last duty if that was earlier. Nothing while they're still on duty.
+function catchUp(g: Gathering) {
+  if (onDuty(g)) return null;
+  const marks = [g.away_seen_at, g.duty_from].filter((t): t is number => !!t);
+  if (marks.length === 0) return null;
+  const since = Math.min(...marks);
+  const hichkis = listHichkisSince(g.id, since).map((h) => ({ from: h.from_name, memberId: h.member_id, at: h.created_at }));
+  const answered = listRequests(g.id).filter((r) => (r.status === 'done' || r.status === 'unlocked') && (r.fulfilled_at ?? 0) > since);
+  const stories = listStories(g.id).filter((s) => s.created_at > since);
+  if (hichkis.length === 0 && answered.length === 0 && stories.length === 0) return null;
+  return {
+    since,
+    wasOnDuty: !!g.duty_from && g.duty_from >= since - 1000,
+    dutyNote: g.duty_note,
+    hichkis,
+    answered: answered.map((r) => r.id),
+    stories: stories.map((s) => s.id),
+  };
+}
+
+// The away person goes on duty until a time (with an optional note), or comes off duty.
+app.post('/api/gatherings/:id/duty', async (req) => {
+  const g = findGathering((req.params as { id: string }).id);
+  requireCaller(req, g, 'away');
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const until = body.until === null ? null : parseTime(body.until, 'End of duty');
+  if (until !== null && until <= Date.now()) throw new HttpError(400, 'Pick a time later than now.');
+  if (until !== null && until > Date.now() + 3 * 24 * 60 * 60 * 1000) throw new HttpError(400, 'Duty can be set for up to three days at a time.');
+
+  setDuty(g.id, until, clean(body.note, 80) || null);
+  const updated = findGathering(g.id);
+  req.log.info({ event: until ? 'duty_on' : 'duty_off', gatheringId: g.id }, 'duty changed');
+  emitAll(g.id, 'gathering', gatheringView(updated));
+  return { gathering: gatheringView(updated) };
+});
+
+// The away person has seen the catch-up; next time, start from now.
+app.post('/api/gatherings/:id/seen', async (req) => {
+  const g = findGathering((req.params as { id: string }).id);
+  requireCaller(req, g, 'away');
+  markAwaySeen(g.id);
+  return { ok: true };
+});
+
+// The away person's phone tells us its timezone, so the room can see their clock.
+app.post('/api/gatherings/:id/away-tz', async (req) => {
+  const g = findGathering((req.params as { id: string }).id);
+  requireCaller(req, g, 'away');
+  const tz = clean(((req.body ?? {}) as Record<string, unknown>).tz, 64);
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: tz });
+  } catch {
+    throw new HttpError(400, 'Unknown timezone.');
+  }
+  if (tz && tz !== g.away_tz) {
+    setAwayTz(g.id, tz);
+    emitAll(g.id, 'gathering', gatheringView(findGathering(g.id)));
+  }
+  return { ok: true };
+});
+
+// Hichki back: the away person remembers one particular guest.
+app.post('/api/gatherings/:id/hichki-back', async (req) => {
+  const g = findGathering((req.params as { id: string }).id);
+  requireCaller(req, g, 'away');
+  if (!flags().hichki) throw new HttpError(409, 'Hichki is switched off right now.');
+  const member = getMember(clean(((req.body ?? {}) as Record<string, unknown>).memberId, 64));
+  if (!member || member.gathering_id !== g.id || member.removed_at) throw new HttpError(404, 'That person isn\u2019t in this gathering.');
+
+  const key = `back:${g.id}:${member.id}`;
+  if (Date.now() - (lastHichki.get(key) ?? 0) < HICHKI_COOLDOWN_MS) throw new HttpError(429, 'Sent. Give it a moment before the next one.');
+  lastHichki.set(key, Date.now());
+
+  req.log.info({ event: 'hichki_back', gatheringId: g.id }, 'hichki back');
+  await emitToMember(g.id, member.id, 'hichki:back', { from: g.away_name, at: Date.now() });
   return { ok: true };
 });
 

@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import { api, getKeepsake, publicBaseUrl, saved, type PublicGathering, type RoomApi } from '../api.ts';
 import { useRoom } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
+import { AwayClock, DutyBanner } from '../duty.tsx';
 import { HichkiButton, Leaderboard } from '../parts.tsx';
 
 export function Host({ id, token: urlToken }: { id: string; token: string }) {
@@ -78,7 +79,10 @@ export function Host({ id, token: urlToken }: { id: string; token: string }) {
           <span className={`dot ${presence?.awayOnline ? 'on' : ''}`} aria-hidden="true" />
           {presence?.awayOnline ? `${gathering.awayName} is here now` : `${gathering.awayName} hasn’t opened it yet`}
         </p>
+        <AwayClock gathering={room.feed?.gathering ?? gathering} />
       </section>
+
+      <DutyBanner gathering={room.feed?.gathering ?? gathering} />
 
       {room.api && room.feed?.flags.hichki && <HichkiButton api={room.api} awayName={gathering.awayName} />}
       {presence && <Leaderboard presence={presence} limit={5} />}

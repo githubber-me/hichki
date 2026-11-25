@@ -7,11 +7,14 @@ export function MemberList({
   presence,
   me,
   onRemove,
+  onHichki,
 }: {
   presence: Presence | null;
   me?: string;
   onRemove?: (memberId: string) => Promise<void>;
+  onHichki?: (memberId: string) => Promise<unknown>;
 }) {
+  const [sentTo, setSentTo] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [error, setError] = useState('');
 
@@ -51,6 +54,24 @@ export function MemberList({
               </span>
             )}
             {m.id === me && <span className="badge">you</span>}
+            {onHichki && (
+              <button
+                type="button"
+                className="btn btn-quiet btn-small member-remove"
+                onClick={async () => {
+                  setError('');
+                  try {
+                    await onHichki(m.id);
+                    setSentTo(m.id);
+                    window.setTimeout(() => setSentTo((s) => (s === m.id ? null : s)), 3000);
+                  } catch (err) {
+                    setError((err as Error).message);
+                  }
+                }}
+              >
+                {sentTo === m.id ? 'Sent' : 'Hichki'}
+              </button>
+            )}
             {onRemove &&
               (confirming === m.id ? (
                 <span className="member-actions">

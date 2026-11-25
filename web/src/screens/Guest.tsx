@@ -2,6 +2,8 @@ import { Suspense, lazy, useEffect, useState, type FormEvent } from 'react';
 import { api, roomApi, saved, type Member, type Proof, type PublicGathering, type Req, type RoomApi } from '../api.ts';
 import { useRoom } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
+import { AwayClock, DutyBanner } from '../duty.tsx';
+import type { Hichki } from '../live.ts';
 import { HichkiButton, Leaderboard, MicIcon, PhotoButton, ProofView, RecordButton, Stories, Tabs, clock, uploadPhoto, uploadRecording } from '../parts.tsx';
 
 // What the QR code opens. First visit asks for a name; after that the phone remembers.
@@ -147,7 +149,11 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
           <span className={`dot ${feed.presence.awayOnline ? 'on' : ''}`} aria-hidden="true" />
           {feed.presence.awayOnline ? `${away} is with you right now` : `${away} will see everything you send`}
         </p>
+        <AwayClock gathering={feed.gathering} />
       </header>
+
+      <DutyBanner gathering={feed.gathering} />
+      <HichkiBack moment={room.hichkiBack} />
 
       {feed.gathering.wrappedAt && (
         <a className="banner" href={`/g/${gathering.id}/yaadein`}>
@@ -558,5 +564,29 @@ function Welcome({
         </button>
       </form>
     </main>
+  );
+}
+
+// Hichki back: the away person thought of you, by name.
+function HichkiBack({ moment }: { moment: Hichki | null }) {
+  const [show, setShow] = useState<Hichki | null>(null);
+  useEffect(() => {
+    if (!moment) return;
+    setShow(moment);
+    navigator.vibrate?.([120, 80, 120]);
+    const t = window.setTimeout(() => setShow(null), 7000);
+    return () => window.clearTimeout(t);
+  }, [moment]);
+  if (!show) return null;
+  return (
+    <div className="hichki-toast" role="status" key={show.at}>
+      <span className="hichki-art" aria-hidden="true" />
+      <div>
+        <p className="hichki-line" lang="hi">
+          {show.from} ने याद किया
+        </p>
+        <p className="muted">{show.from} thought of you, just now</p>
+      </div>
+    </div>
   );
 }

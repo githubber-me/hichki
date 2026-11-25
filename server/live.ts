@@ -7,7 +7,7 @@
 
 import type { Socket } from 'socket.io';
 import { io, log } from './app.ts';
-import { getGathering, getMember, listMembers, type RequestRow } from './db.ts';
+import { getGathering, getMember, listMembers, markAwaySeen, type RequestRow } from './db.ts';
 import { flags, onFlagsChange, onPacksChange } from './flags.ts';
 import { requestView } from './views.ts';
 
@@ -60,6 +60,12 @@ export function emitAll(gatheringId: string, event: string, payload: unknown) {
 
 export function emitAway(gatheringId: string, event: string, payload: unknown) {
   io.to(awayOf(gatheringId)).emit(event, payload);
+}
+
+// Send an event to one guest's open phones only.
+export async function emitToMember(gatheringId: string, memberId: string, event: string, payload: unknown) {
+  const sockets = await io.in(roomOf(gatheringId)).fetchSockets();
+  for (const s of sockets) if (s.data.memberId === memberId) s.emit(event, payload);
 }
 
 // The host removed someone: tell their open phones, then close them.
@@ -126,7 +132,11 @@ io.on('connection', (socket: Socket) => {
 
   socket.on('disconnect', () => {
     if (memberId) bump(online.get(g.id) ?? new Map(), memberId, -1);
-    if (role === 'away') bump(awayOnline, g.id, -1);
+    if (role === 'away') {
+      bump(awayOnline, g.id, -1);
+      // Last time the away person was here, for "while you were away" on their next visit.
+      if ((awayOnline.get(g.id) ?? 0) === 0) markAwaySeen(g.id);
+    }
     broadcastPresence(g.id);
   });
 });

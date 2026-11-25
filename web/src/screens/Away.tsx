@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ApiError, saved, type Draft, type Feed, type Kind, type Proof, type Req, type RoomApi } from '../api.ts';
 import { useRoom, type Hichki } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
+import { CatchUpCard, DutyControl } from '../duty.tsx';
 import { Yaadein } from './Yaadein.tsx';
 import { Leaderboard, MicIcon, ProofView, RecordButton, Stories, Tabs, ago, clock, uploadRecording } from '../parts.tsx';
 
@@ -18,6 +19,22 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
   useEffect(() => {
     if (token) saved.setAwayToken(id, token);
   }, [id, token]);
+
+  // Tell the room this phone's timezone, so they can see the away person's clock.
+  useEffect(() => {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (api && tz && feed && feed.gathering.awayTz !== tz) api.setAwayTz(tz).catch(() => {});
+  }, [api, feed?.gathering.awayTz]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const [caughtUp, setCaughtUp] = useState(false);
+
+  // Duty ran out while the page was open: fetch again so the held hichkis show.
+  const dutyUntil = feed?.gathering.duty?.until ?? 0;
+  useEffect(() => {
+    if (!dutyUntil || !api) return;
+    const t = window.setTimeout(() => window.dispatchEvent(new Event('hichki:reload')), Math.max(0, dutyUntil - Date.now()) + 1500);
+    return () => window.clearTimeout(t);
+  }, [dutyUntil, api]);
 
   if (!token) return <main className="screen"><p className="error">This link is incomplete. Ask the host to send it again.</p></main>;
   if (room.error) return <main className="screen"><p className="error">{room.error}</p></main>;
@@ -49,10 +66,11 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
       </header>
 
       <HichkiMoment hichki={room.hichki} />
-      <NewSince id={id} feed={feed} />
+      {feed.catchUp && !caughtUp && <CatchUpCard api={api} feed={feed} catchUp={feed.catchUp} onDone={() => setCaughtUp(true)} />}
 
       {tab === 'ask' && (
         <>
+          <DutyControl api={api} gathering={g} onChange={() => setCaughtUp(false)} />
           <Composer api={api} feed={feed} />
           <MyRequests api={api} feed={feed} now={room.now()} />
           <Leaderboard presence={feed.presence} limit={5} />
@@ -60,7 +78,9 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
       )}
       {tab === 'letters' && feed.flags.jab_kholna && <Letters api={api} feed={feed} />}
       {tab === 'stories' && <Stories api={api} stories={feed.stories} canRecord={false} />}
-      {tab === 'people' && <MemberList presence={feed.presence} />}
+      {tab === 'people' && (
+        <MemberList presence={feed.presence} onHichki={feed.flags.hichki ? (mid) => api.hichkiBack(mid) : undefined} />
+      )}
 
       <Tabs<Tab> tabs={tabs} value={tab === 'letters' && !feed.flags.jab_kholna ? 'ask' : tab} onChange={setTab} />
     </main>
@@ -117,30 +137,6 @@ function hic() {
 }
 
 // A closed phone can't be woken, so say what arrived while it was away.
-function NewSince({ id, feed }: { id: string; feed: Feed }) {
-  const key = `hichki:seen:${id}`;
-  const [since] = useState(() => Number(localStorage.getItem(key) ?? 0));
-  const [dismissed, setDismissed] = useState(false);
-
-  useEffect(() => {
-    const save = () => localStorage.setItem(key, String(Date.now()));
-    window.addEventListener('pagehide', save);
-    document.addEventListener('visibilitychange', save);
-    return () => {
-      save();
-      window.removeEventListener('pagehide', save);
-      document.removeEventListener('visibilitychange', save);
-    };
-  }, [key]);
-
-  const fresh = since ? feed.proofs.filter((p) => p.createdAt > since).length : 0;
-  if (!fresh || dismissed) return null;
-  return (
-    <button type="button" className="banner" onClick={() => setDismissed(true)}>
-      {fresh} new {fresh === 1 ? 'reply' : 'replies'} since you last looked
-    </button>
-  );
-}
 
 // Datetime inputs work in the phone's own time zone.
 function toLocalInput(ts: number): string {

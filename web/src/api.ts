@@ -7,6 +7,8 @@ export type PublicGathering = {
   awayName: string;
   wrappedAt: number | null;
   verified: boolean; // guests must sign in to join
+  awayTz: string | null; // the away person's timezone, from their phone
+  duty: { from: number; until: number; note: string | null } | null; // Duty pe
 };
 export type Member = { id: string; name: string; points: number; avatarUrl?: string | null; verified?: boolean };
 export type Presence = {
@@ -96,6 +98,15 @@ export type Story = {
   createdAt: number;
 };
 
+export type CatchUp = {
+  since: number;
+  wasOnDuty: boolean;
+  dutyNote: string | null;
+  hichkis: { from: string; memberId: string | null; at: number }[];
+  answered: string[]; // request ids
+  stories: string[]; // story ids
+};
+
 // A ready-made request idea for the occasion (from Flagsmith's `request_packs`).
 export type PackItem = { kind: 'see' | 'do'; text: string };
 
@@ -105,6 +116,8 @@ export type Feed = {
   me: Member | null;
   flags: Flags;
   packs: PackItem[];
+  // "While you were away" (away person only; null when there's nothing new).
+  catchUp: CatchUp | null;
   presence: Presence;
   requests: Req[];
   proofs: Proof[];
@@ -179,6 +192,11 @@ export function roomApi(id: string, who: Who) {
     wrap: (wrapped: boolean) => call<{ gathering: PublicGathering }>('POST', `${g}/wrap`, { wrapped }),
     // Guest only: change your name, or your photo (an uploaded file, or null to remove it).
     updateMe: (changes: { name?: string; photo?: string | null }) => call<{ member: Member }>('POST', `${g}/me`, changes),
+    // Away only.
+    setDuty: (until: number | null, note?: string) => call<{ gathering: PublicGathering }>('POST', `${g}/duty`, { until, note }),
+    seen: () => call<{ ok: true }>('POST', `${g}/seen`, {}),
+    setAwayTz: (tz: string) => call<{ ok: true }>('POST', `${g}/away-tz`, { tz }),
+    hichkiBack: (memberId: string) => call<{ ok: true }>('POST', `${g}/hichki-back`, { memberId }),
     // Host only.
     removeMember: (memberId: string) => call<{ ok: true }>('DELETE', `${g}/members/${memberId}`),
     setVerified: (verified: boolean) => call<{ gathering: PublicGathering }>('POST', `${g}/verified`, { verified }),

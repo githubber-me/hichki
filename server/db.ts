@@ -113,6 +113,21 @@ if (!gatheringColumns.some((c) => c.name === 'verified')) {
   db.exec('ALTER TABLE gatherings ADD COLUMN verified INTEGER NOT NULL DEFAULT 0');
 }
 
+// Duty pe: the away person can be on duty (a shift, a posting, a delivery run).
+//   duty_from / duty_until: the current or last duty; hichkis are held during it.
+//   duty_note: what they're doing, shown to the room ("night shift at the hospital").
+//   away_seen_at: when the away person last left, for "while you were away".
+for (const [column, type] of [
+  ['duty_from', 'INTEGER'],
+  ['duty_until', 'INTEGER'],
+  ['duty_note', 'TEXT'],
+  ['away_seen_at', 'INTEGER'],
+  // The away person's timezone, saved from their phone, so the room can see their clock.
+  ['away_tz', 'TEXT'],
+] as const) {
+  if (!gatheringColumns.some((c) => c.name === column)) db.exec(`ALTER TABLE gatherings ADD COLUMN ${column} ${type}`);
+}
+
 // Members who signed in carry their sign-in account and photo. removed_at is set
 // when the host removes someone; their link stops working and they leave the lists.
 const memberColumns = db.prepare('PRAGMA table_info(members)').all() as { name: string }[];
@@ -134,6 +149,11 @@ export type Gathering = {
   created_at: number;
   wrapped_at: number | null;
   verified: number; // 1 when guests must sign in to join
+  duty_from: number | null;
+  duty_until: number | null;
+  duty_note: string | null;
+  away_seen_at: number | null;
+  away_tz: string | null;
 };
 
 export type Member = {
@@ -172,6 +192,11 @@ export function createGathering(name: string, occasion: string, awayName: string
     created_at: Date.now(),
     wrapped_at: null,
     verified: verified ? 1 : 0,
+    duty_from: null,
+    duty_until: null,
+    duty_note: null,
+    away_seen_at: null,
+    away_tz: null,
   };
   db.prepare(
     `INSERT INTO gatherings (id, name, occasion, away_name, host_token, away_token, created_at, verified)
@@ -187,6 +212,28 @@ export function createGathering(name: string, occasion: string, awayName: string
     gathering.verified,
   );
   return gathering;
+}
+
+export function onDuty(g: Gathering, now = Date.now()): boolean {
+  return !!g.duty_until && !!g.duty_from && g.duty_from <= now && now < g.duty_until;
+}
+
+// Start duty (until a time), or end it now (until = null keeps duty_from for the catch-up).
+export function setDuty(id: string, until: number | null, note: string | null) {
+  if (until) {
+    db.prepare('UPDATE gatherings SET duty_from = ?, duty_until = ?, duty_note = ? WHERE id = ?').run(Date.now(), until, note, id);
+  } else {
+    db.prepare('UPDATE gatherings SET duty_until = ? WHERE id = ?').run(Date.now(), id);
+  }
+}
+
+// The away person has caught up: next time, only show what's new after now.
+export function markAwaySeen(id: string, at = Date.now()) {
+  db.prepare('UPDATE gatherings SET away_seen_at = ?, duty_from = CASE WHEN duty_until <= ? THEN NULL ELSE duty_from END WHERE id = ?').run(at, at, id);
+}
+
+export function setAwayTz(id: string, tz: string) {
+  db.prepare('UPDATE gatherings SET away_tz = ? WHERE id = ?').run(tz, id);
 }
 
 export function setVerified(id: string, verified: boolean) {
@@ -523,6 +570,12 @@ export function addHichki(gatheringId: string, memberId: string | null, fromName
     fromName,
     at,
   );
+}
+
+export function listHichkisSince(gatheringId: string, since: number): HichkiRow[] {
+  return db
+    .prepare('SELECT * FROM hichkis WHERE gathering_id = ? AND created_at > ? ORDER BY created_at ASC')
+    .all(gatheringId, since) as HichkiRow[];
 }
 
 export function listHichkis(gatheringId: string): HichkiRow[] {
