@@ -1,6 +1,6 @@
 # Architecture
 
-How Hichki is put together. This is the plan for the build on 25 November 2026; sections are updated as each part lands.
+How Hichki is put together: the server, the screens, the flows, the data and how each sponsor tool is used.
 
 ## Overview
 
@@ -111,12 +111,14 @@ Requests nobody answered are left off the page on purpose. It is a record of wha
 
 | Table | Fields |
 | --- | --- |
-| gatherings | id, name, occasion, away_name, host_token, away_token, created_at, wrapped_at |
-| members | id, gathering_id, device_id, name, points, created_at |
-| requests | id, gathering_id, kind (`see`, `do`, `letter`), text, audio_path, language, live_at, until, open_when, status, accepted_proof_id |
-| proofs | id, request_id, member_id, file_path, created_at |
-| stories | id, gathering_id, teller, audio_path, language, transcript, translation |
-| hichkis | id, gathering_id, member_id, from_name, created_at |
+| gatherings | id, name, occasion, away_name, host_token, away_token, verified, room_lang, read_lang, away_reason, away_tz, duty_from, duty_until, duty_note, away_seen_at, created_at, wrapped_at |
+| away_people | id, gathering_id, name, token, reason, tz, duty_from, duty_until, duty_note, seen_at, created_at (everyone away after the first, each with their own link) |
+| members | id, gathering_id, device_id, name, points, auth_user_id, avatar_url, removed_at, created_at |
+| requests | id, gathering_id, kind (`see`, `do`, `letter`, `story`), text, text_original, language, audio_file, transcript, asked_by, asked_by_name, nominee_id, open_when, status, live_at, until, unlock_at, accepted_proof_id, fulfilled_at, created_at |
+| proofs | id, request_id, member_id, file, media, caption, thanks_text, thanks_file, thanks_at, loved_at, set_aside, created_at |
+| stories | id, gathering_id, request_id, member_id, teller, audio_file, language, target_language, transcript, translation, status, error, created_at |
+| hichkis | id, gathering_id, member_id, from_name, to_away, note, created_at |
+| translations | source, target, result (a cache, so the same line is never translated twice) |
 
 Every hichki tap is stored, so the yaadein page can show each time someone remembered.
 
