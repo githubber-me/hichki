@@ -128,6 +128,10 @@ for (const [column, type] of [
   if (!gatheringColumns.some((c) => c.name === column)) db.exec(`ALTER TABLE gatherings ADD COLUMN ${column} ${type}`);
 }
 
+// A story told in answer to a request ("Ask Dadi about her wedding day") is linked to it.
+const storyColumns = db.prepare('PRAGMA table_info(stories)').all() as { name: string }[];
+if (!storyColumns.some((c) => c.name === 'request_id')) db.exec('ALTER TABLE stories ADD COLUMN request_id TEXT');
+
 // A thank-you from the away person on the proof they picked: text, or a voice or video note.
 const proofColumns = db.prepare('PRAGMA table_info(proofs)').all() as { name: string }[];
 for (const [column, type] of [
@@ -357,7 +361,8 @@ export function addPoints(memberId: string, points: number) {
 // Requests and letters
 // ---------------------------------------------------------------------------
 
-export type RequestKind = 'see' | 'do' | 'letter';
+// story: Dadi ki kahani, the away person asks someone at the gathering to tell a story.
+export type RequestKind = 'see' | 'do' | 'letter' | 'story';
 export type RequestStatus = 'scheduled' | 'open' | 'done' | 'closed' | 'locked' | 'unlocked';
 
 export type RequestRow = {
@@ -520,6 +525,7 @@ export function listProofs(gatheringId: string): ProofRow[] {
 export type StoryRow = {
   id: string;
   gathering_id: string;
+  request_id?: string | null;
   member_id: string | null;
   teller: string;
   audio_file: string;
@@ -533,7 +539,7 @@ export type StoryRow = {
 };
 
 export function createStory(
-  s: Pick<StoryRow, 'gathering_id' | 'member_id' | 'teller' | 'audio_file' | 'language' | 'target_language'>,
+  s: Pick<StoryRow, 'gathering_id' | 'member_id' | 'teller' | 'audio_file' | 'language' | 'target_language'> & { request_id?: string | null },
 ): StoryRow {
   const row: StoryRow = {
     ...s,
@@ -546,11 +552,11 @@ export function createStory(
   };
   db.prepare(
     `INSERT INTO stories (id, gathering_id, member_id, teller, audio_file, language, target_language,
-       transcript, translation, status, error, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       transcript, translation, status, error, created_at, request_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     row.id, row.gathering_id, row.member_id, row.teller, row.audio_file, row.language, row.target_language,
-    row.transcript, row.translation, row.status, row.error, row.created_at,
+    row.transcript, row.translation, row.status, row.error, row.created_at, row.request_id ?? null,
   );
   return row;
 }

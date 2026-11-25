@@ -6,7 +6,7 @@
 // dashboard changes the ideas on every away screen within seconds. These defaults
 // are used until Flagsmith answers, or when the flag is off or its value is invalid.
 
-export type PackItem = { kind: 'see' | 'do'; text: string };
+export type PackItem = { kind: 'see' | 'do' | 'story'; text: string };
 export type Packs = Record<string, PackItem[]>;
 
 export const DEFAULT_PACKS: Packs = {
@@ -18,6 +18,7 @@ export const DEFAULT_PACKS: Packs = {
     { kind: 'do', text: 'Touch Nani’s feet for me and take her blessing' },
     { kind: 'do', text: 'Put a little haldi on the groom from me' },
     { kind: 'see', text: 'Send me the first photo of the couple after the pheras' },
+    { kind: 'story', text: 'Ask Dadi to tell the story of her own wedding day' },
   ],
   diwali: [
     { kind: 'see', text: 'Show me the rangoli before anyone walks on it' },
@@ -26,6 +27,7 @@ export const DEFAULT_PACKS: Packs = {
     { kind: 'do', text: 'Light one phuljhadi in my name' },
     { kind: 'see', text: 'Show me Mummy’s kitchen full of sweets' },
     { kind: 'do', text: 'Give Papa a hug from me after the puja' },
+    { kind: 'story', text: 'Ask Dadi how she celebrated Diwali as a girl' },
   ],
   christmas: [
     { kind: 'see', text: 'Show me the tree when the lights come on' },
@@ -67,6 +69,7 @@ export const DEFAULT_PACKS: Packs = {
     { kind: 'see', text: 'Show me the room you’re all crashing in' },
     { kind: 'do', text: 'Raise a glass to me tonight' },
     { kind: 'see', text: 'Send me the sunset from the top' },
+    { kind: 'story', text: 'Tell me the funniest thing that happened today' },
   ],
   gathering: [
     { kind: 'see', text: 'Show me everyone around the table' },
@@ -88,7 +91,7 @@ export function parsePacks(value: unknown): Packs | null {
     for (const [occasion, items] of Object.entries(data)) {
       if (!Array.isArray(items)) return null;
       packs[occasion.toLowerCase()] = items
-        .filter((i) => i && (i.kind === 'see' || i.kind === 'do') && typeof i.text === 'string' && i.text.trim())
+        .filter((i) => i && (i.kind === 'see' || i.kind === 'do' || i.kind === 'story') && typeof i.text === 'string' && i.text.trim())
         .slice(0, 12)
         .map((i) => ({ kind: i.kind, text: String(i.text).trim().slice(0, 140) }));
     }

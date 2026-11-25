@@ -74,6 +74,7 @@ export function storyView(s: StoryRow) {
   return {
     id: s.id,
     teller: s.teller,
+    requestId: s.request_id ?? null, // set when told in answer to a story request
     memberId: s.member_id,
     status: s.status,
     error: s.error,

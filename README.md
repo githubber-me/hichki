@@ -36,7 +36,7 @@ She wasn't there. But she was part of it.
 
 **Jab kholna** (open when). Record voice letters ahead of time that stay locked until a moment happens. "Open when the cake is cut." "Open when Dadi starts crying." The room unlocks it by showing that the moment came.
 
-**Dadi ki kahani** (grandma's story). An elder tells a story in their own language. Punjabi, Kannada, Bengali, any of them. Family anywhere in the world can hear her voice and read the story in the language they understand.
+**Dadi ki kahani** (grandma's story). Ask for a story, and someone hands Dadi the phone. She tells it in her own language. Punjabi, Kannada, Bengali, any of them. Family anywhere in the world can hear her voice and read the story in the language they understand.
 
 **Yaadein** (memories). When the celebration ends, nothing disappears. The host taps "wrap up", and the same link you used all week opens on one page: everything you asked for and what came back, the letters that opened, Dadi's story, and a dot for every single time someone thought of you. Tap once and it plays back from the first day to the last. You can send that page to anyone, and they can only look.
 

@@ -261,6 +261,22 @@ export function Stories({ api, stories, canRecord = true }: { api: RoomApi; stor
   );
 }
 
+// A told story's words: the original and the translation, for cards that answer a story request.
+export function StoryWords({ story }: { story: Story }) {
+  if (story.status === 'processing') return <p className="muted small">Writing it down and translating&hellip;</p>;
+  if (story.status === 'failed') return <p className="error">{story.error ?? 'We kept the voice, but couldn\u2019t write it down.'}</p>;
+  return (
+    <>
+      {story.transcript && (
+        <p className="story-original" lang={story.language ?? undefined}>
+          {story.transcript}
+        </p>
+      )}
+      {story.translation && story.translation !== story.transcript && <p className="story-translation">{story.translation}</p>}
+    </>
+  );
+}
+
 // Bottom tabs. Each screen decides which ones it has.
 export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: [T, string][]; value: T; onChange: (t: T) => void }) {
   return (

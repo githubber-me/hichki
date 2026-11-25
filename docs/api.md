@@ -88,7 +88,7 @@ A request is one card in the room.
 // Request
 {
   "id": "...",
-  "kind": "see",                 // see (Be my eyes) | do (Meri taraf se) | letter (Jab kholna)
+  "kind": "see",                 // see (Be my eyes) | do (Meri taraf se) | letter (Jab kholna) | story (Dadi ki kahani)
   "status": "open",              // see/do: scheduled | open | done | closed
                                  // letter: scheduled | locked | unlocked
   "text": "Show me Dadi when she sees the bride",
@@ -135,6 +135,8 @@ A request is one card in the room.
 ```
 
 A letter needs `audioFile` or `text`, and `openWhen` or `unlockAt`. Letters return 409 while the `jab_kholna` flag is off.
+
+**Story requests** (`kind: "story"`) are answered by recording: send an audio `file` and a `teller` ("Dadi") to `POST /api/requests/:rid/proofs`. The recording also becomes a story (with `requestId` set), transcribed and translated like any other. `draft` returns `kind: "story"` when someone asks for a story or a memory.
 
 **Accepting** gives the sender 10 points. Accepting proof on a letter unlocks it, and its `audioUrl` and `transcript` are then sent to the room.
 

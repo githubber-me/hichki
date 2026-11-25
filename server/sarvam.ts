@@ -89,7 +89,7 @@ export async function transcribe(
 // Request to card
 // ---------------------------------------------------------------------------
 
-export type Card = { kind: 'see' | 'do'; text: string; textOriginal: string };
+export type Card = { kind: 'see' | 'do' | 'story'; text: string; textOriginal: string };
 
 const CARD_SCHEMA = {
   name: 'request_card',
@@ -101,8 +101,9 @@ const CARD_SCHEMA = {
     properties: {
       kind: {
         type: 'string',
-        enum: ['see', 'do'],
-        description: 'see: they want to be shown something. do: they want someone to do something for them.',
+        enum: ['see', 'do', 'story'],
+        description:
+          'see: they want to be shown something. do: they want someone to do something for them. story: they want someone (often an elder) to tell them a story or a memory.',
       },
       text: {
         type: 'string',
@@ -122,6 +123,7 @@ const CARD_EXAMPLES: [string, Card][] = [
   ['mummy ko meri taraf se ek hug de dena', { kind: 'do', text: 'Give Mummy a hug from me', textOriginal: 'mummy ko meri taraf se ek hug de dena' }],
   ['मेरी तरफ से मंदिर में दिया जला देना और फोटो भेजना', { kind: 'do', text: 'Light a diya at the temple for me, and send a photo', textOriginal: 'मेरी तरफ से मंदिर में दिया जला देना और फोटो भेजना' }],
   ['show me papa dancing at the sangeet', { kind: 'see', text: 'Show me Papa dancing at the sangeet', textOriginal: 'show me papa dancing at the sangeet' }],
+  ['दादी से कहना अपनी शादी की कहानी सुनाएं', { kind: 'story', text: 'Ask Dadi to tell the story of her own wedding day', textOriginal: 'दादी से कहना अपनी शादी की कहानी सुनाएं' }],
 ];
 
 const CARD_INSTRUCTIONS =
@@ -129,6 +131,7 @@ const CARD_INSTRUCTIONS =
   'and is asking the people there. Reply with JSON only: ' +
   '"kind" is "see" when they mainly want to be shown something (a person, a moment, a photo of it), ' +
   'and "do" when they want someone to do something for them (light a diya, give a hug, touch feet, play a message), even if they also ask for a photo. ' +
+  '"story" when they want someone, often an elder, to tell them a story or a memory (kahani, kissa, "tell me about"). ' +
   '"text" is the request in simple English, in their own voice, at most 12 words. ' +
   '"text_original" is the request in the language and script they spoke, as one sentence. ' +
   'Only use names and relations that the speaker said. Never add anything else.';
@@ -157,7 +160,7 @@ export async function toCard(transcript: string, language: string | null = null)
   let card: Card | null = null;
   try {
     const parsed = JSON.parse(body?.choices?.[0]?.message?.content ?? '');
-    if ((parsed.kind === 'see' || parsed.kind === 'do') && typeof parsed.text === 'string' && parsed.text.trim()) {
+    if ((parsed.kind === 'see' || parsed.kind === 'do' || parsed.kind === 'story') && typeof parsed.text === 'string' && parsed.text.trim()) {
       card = {
         kind: parsed.kind,
         text: parsed.text.trim(),
@@ -173,6 +176,9 @@ export async function toCard(transcript: string, language: string | null = null)
     card = { kind: guessKind(transcript), text: transcript, textOriginal: transcript };
   }
 
+  // Asking for a story is easy to spot by its words, whatever the model decided.
+  if (card.kind !== 'story' && isStoryAsk(`${transcript} ${card.text}`)) card.kind = 'story';
+
   // The card must be readable by everyone in the room. If it didn't come back in
   // English, or came back far too long, translate the transcript instead.
   if ((hasIndicScript(card.text) || card.text.split(/\s+/).length > 20) && language && language !== 'en-IN') {
@@ -187,6 +193,11 @@ export async function toCard(transcript: string, language: string | null = null)
   if (card.textOriginal.length > transcript.length * 1.5) card.textOriginal = transcript;
 
   return { ...card, text: card.text.slice(0, 140), textOriginal: card.textOriginal.slice(0, 200) };
+}
+
+// "Tell me a story": kahani, kissa, sunao, or the English words.
+export function isStoryAsk(text: string): boolean {
+  return /(कहानी|किस्सा|क़िस्सा|सुनाओ|सुनाएं|सुनाना|kahani|kahaani|kissa|sunao|\bstory\b|\bstories\b|tell (me|us) about)/i.test(text);
 }
 
 // Used when the model's answer can't be read: "show me", "dikhao", "dekhna" mean see.

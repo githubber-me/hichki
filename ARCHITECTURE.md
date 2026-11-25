@@ -85,6 +85,8 @@ A guest taps the button. The server forwards it to the away person's open page, 
 
 **3. Stories** (Dadi ki kahani)
 
+A story is something the away person asks for, like any request: "Ask Dadi to tell the story of her wedding day". Someone hands Dadi the phone and records her; that answer is also kept as a story. Stories nobody asked for can be recorded from "More ways to bring them in" at the bottom of the room.
+
 1. A guest records an elder's story (up to 30 seconds per clip).
 2. Sarvam transcribes it in the spoken language and translates it.
 3. Everyone can play the original voice next to the transcript and translation.

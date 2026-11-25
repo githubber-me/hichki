@@ -5,7 +5,7 @@ import { MemberList } from './MemberList.tsx';
 import { AwayClock, DutyBanner } from '../duty.tsx';
 import { ThanksView } from '../thanks.tsx';
 import type { Hichki } from '../live.ts';
-import { HichkiButton, Leaderboard, MicIcon, PhotoButton, ProofView, RecordButton, Stories, Tabs, clock, uploadPhoto, uploadRecording } from '../parts.tsx';
+import { StoryWords, HichkiButton, Leaderboard, MicIcon, PhotoButton, ProofView, RecordButton, Stories, Tabs, clock, uploadPhoto, uploadRecording } from '../parts.tsx';
 
 // What the QR code opens. First visit asks for a name; after that the phone remembers.
 export function Guest({ id }: { id: string }) {
@@ -125,7 +125,7 @@ function NameJoin({ gathering, onJoined }: { gathering: PublicGathering; onJoine
   );
 }
 
-type Tab = 'room' | 'stories' | 'people';
+type Tab = 'room' | 'people';
 
 function Room({ gathering, member }: { gathering: PublicGathering; member: Member }) {
   const room = useRoom(gathering.id, { role: 'guest', memberId: member.id });
@@ -215,6 +215,9 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
                   <article key={r.id} className="card done-card">
                     <p className="request-text">{r.text}</p>
                     {won && <ProofView proof={won} />}
+                    {won && r.kind === 'story' && feed.stories.find((s) => s.requestId === r.id && s.audioUrl === won.url) && (
+                      <StoryWords story={feed.stories.find((s) => s.requestId === r.id && s.audioUrl === won.url)!} />
+                    )}
                     {won && <p className="muted">{away} picked {won.memberId === member.id ? 'yours' : `${won.memberName}’s`}.</p>}
                     {won?.thanks && <ThanksView thanks={won.thanks} from={away} />}
                   </article>
@@ -222,10 +225,14 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
               })}
             </section>
           )}
+
+          <details className="more-ways">
+            <summary>More ways to bring {away} in</summary>
+            <Stories api={roomApi} stories={feed.stories.filter((st) => !st.requestId)} />
+          </details>
         </>
       )}
 
-      {tab === 'stories' && <Stories api={roomApi} stories={feed.stories} />}
       {tab === 'people' && (
         <>
           <Profile api={roomApi} gatheringId={gathering.id} me={feed.presence.members.find((m) => m.id === member.id) ?? member} />
@@ -236,7 +243,6 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
       <Tabs<Tab>
         tabs={[
           ['room', 'Room'],
-          ['stories', 'Stories'],
           ['people', `People (${feed.presence.members.length})`],
         ]}
         value={tab}
@@ -264,6 +270,10 @@ function RequestCard({
 }) {
   const send = useSend(roomApi, request.id);
   const mine = proofs.filter((p) => p.memberId === me).length;
+
+  if (request.kind === 'story') {
+    return <StoryRequestCard request={request} proofs={proofs} api={roomApi} away={away} me={me} />;
+  }
 
   return (
     <article className={`card request-card kind-${request.kind}`}>
@@ -595,5 +605,63 @@ function HichkiBack({ moment }: { moment: Hichki | null }) {
         <p className="muted">{show.from} thought of you, just now</p>
       </div>
     </div>
+  );
+}
+
+// Dadi ki kahani, asked for: the away person wants someone to tell a story.
+// Answer by recording it; it's written down and translated for everyone.
+function StoryRequestCard({ request, proofs, api: roomApi, away, me }: { request: Req; proofs: Proof[]; api: RoomApi; away: string; me: string }) {
+  const [teller, setTeller] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const mine = proofs.filter((p) => p.memberId === me).length;
+
+  async function send(blob: Blob) {
+    if (!teller.trim()) {
+      setError('Say who is telling the story first.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      const up = await uploadRecording(roomApi, blob);
+      await roomApi.sendProof(request.id, up.file, undefined, { teller: teller.trim() });
+      setTeller('');
+    } catch (e) {
+      setError((e as Error).message);
+    }
+    setBusy(false);
+  }
+
+  return (
+    <article className="card request-card kind-story">
+      <p className="eyebrow">{away} asks for a story</p>
+      <p className="request-text">{request.text}</p>
+      {request.textOriginal && request.textOriginal !== request.text && (
+        <p className="request-original" lang={request.language ?? undefined}>
+          {request.textOriginal}
+        </p>
+      )}
+      <label className="field">
+        <span>Who is telling it?</span>
+        <input value={teller} onChange={(e) => { setTeller(e.target.value); setError(''); }} placeholder="Dadi" maxLength={40} />
+      </label>
+      <div className="actions">
+        <RecordButton
+          onDone={send}
+          disabled={busy}
+          className="btn btn-primary"
+          idle={
+            <>
+              <MicIcon /> {busy ? 'Sending\u2026' : 'Record the story (30 seconds)'}
+            </>
+          }
+        />
+      </div>
+      {error && <p className="error">{error}</p>}
+      <p className="muted small">
+        {proofs.length === 0 ? 'Hand the phone to whoever is telling it. Any language works.' : `${proofs.length} told so far${mine ? `, ${mine} from you` : ''}. ${away} picks one.`}
+      </p>
+    </article>
   );
 }

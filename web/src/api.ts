@@ -52,7 +52,7 @@ export const api = {
 
 export type Role = 'guest' | 'host' | 'away';
 export type Flags = { hichki: boolean; jab_kholna: boolean; ai_requests: boolean };
-export type Kind = 'see' | 'do' | 'letter';
+export type Kind = 'see' | 'do' | 'letter' | 'story';
 
 export type Req = {
   id: string;
@@ -89,6 +89,7 @@ export type Proof = {
 export type Story = {
   id: string;
   teller: string;
+  requestId: string | null; // set when told in answer to a story request
   memberId: string | null;
   status: 'processing' | 'ready' | 'failed';
   error: string | null;
@@ -110,7 +111,7 @@ export type CatchUp = {
 };
 
 // A ready-made request idea for the occasion (from Flagsmith's `request_packs`).
-export type PackItem = { kind: 'see' | 'do'; text: string };
+export type PackItem = { kind: 'see' | 'do' | 'story'; text: string };
 
 export type Feed = {
   gathering: PublicGathering;
@@ -186,8 +187,8 @@ export function roomApi(id: string, who: Who) {
     draft: (file: string) => call<Draft>('POST', `${g}/requests/draft`, { file }),
     createRequest: (body: NewRequest) => call<{ request: Req }>('POST', `${g}/requests`, body),
     closeRequest: (rid: string) => call<{ request: Req }>('DELETE', `/api/requests/${rid}`),
-    sendProof: (rid: string, file: string, caption?: string) =>
-      call<{ proof: Proof }>('POST', `/api/requests/${rid}/proofs`, { file, caption }),
+    sendProof: (rid: string, file: string, caption?: string, extra: { teller?: string } = {}) =>
+      call<{ proof: Proof }>('POST', `/api/requests/${rid}/proofs`, { file, caption, ...extra }),
     accept: (rid: string, proofId: string) => call<{ request: Req }>('POST', `/api/requests/${rid}/accept`, { proofId }),
     hichki: () => call<{ ok: true }>('POST', `${g}/hichki`),
     // The host says the celebration is over, or reopens it.

@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { ApiError, saved, type Draft, type Feed, type Kind, type Proof, type Req, type RoomApi } from '../api.ts';
+import { ApiError, saved, type Draft, type Feed, type Kind, type Proof, type Req, type RoomApi , type Story } from '../api.ts';
 import { useRoom, type Hichki } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
 import { CatchUpCard, DutyControl } from '../duty.tsx';
 import { ThanksComposer, ThanksView } from '../thanks.tsx';
 import { Yaadein } from './Yaadein.tsx';
-import { Leaderboard, MicIcon, ProofView, RecordButton, Stories, Tabs, ago, clock, uploadRecording } from '../parts.tsx';
+import { StoryWords, Leaderboard, MicIcon, ProofView, RecordButton, Stories, Tabs, ago, clock, uploadRecording } from '../parts.tsx';
 
-type Tab = 'ask' | 'letters' | 'stories' | 'people';
+type Tab = 'ask' | 'letters' | 'people';
 
 // The private screen for the person who couldn't come.
 export function Away({ id, token: urlToken }: { id: string; token: string }) {
@@ -50,7 +50,7 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
   const here = feed.presence.members.filter((m) => m.online).length;
   const tabs: [Tab, string][] = [['ask', 'Ask']];
   if (feed.flags.jab_kholna) tabs.push(['letters', 'Letters']);
-  tabs.push(['stories', 'Stories'], ['people', `People (${feed.presence.members.length})`]);
+  tabs.push(['people', `People (${feed.presence.members.length})`]);
 
   return (
     <main className="screen has-tabs away">
@@ -74,11 +74,11 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
           <DutyControl api={api} gathering={g} onChange={() => setCaughtUp(false)} />
           <Composer api={api} feed={feed} />
           <MyRequests api={api} feed={feed} now={room.now()} />
+          {feed.stories.some((s) => !s.requestId) && <Stories api={api} stories={feed.stories.filter((s) => !s.requestId)} canRecord={false} />}
           <Leaderboard presence={feed.presence} limit={5} />
         </>
       )}
       {tab === 'letters' && feed.flags.jab_kholna && <Letters api={api} feed={feed} />}
-      {tab === 'stories' && <Stories api={api} stories={feed.stories} canRecord={false} />}
       {tab === 'people' && (
         <MemberList presence={feed.presence} onHichki={feed.flags.hichki ? (mid) => api.hichkiBack(mid) : undefined} />
       )}
@@ -160,7 +160,7 @@ function Composer({ api, feed }: { api: RoomApi; feed: Feed }) {
   function open(d: Partial<Draft>, note = '') {
     setDraft(d);
     setText(d.text ?? '');
-    setKind(d.kind === 'do' ? 'do' : 'see');
+    setKind(d.kind === 'do' ? 'do' : d.kind === 'story' ? 'story' : 'see');
     setError(note);
     window.setTimeout(() => box.current?.focus(), 50);
   }
@@ -254,16 +254,19 @@ function Composer({ api, feed }: { api: RoomApi; feed: Feed }) {
         <button type="button" className={kind === 'do' ? 'is-active' : ''} onClick={() => setKind('do')}>
           Do this for me
         </button>
+        <button type="button" className={kind === 'story' ? 'is-active' : ''} onClick={() => setKind('story')}>
+          Tell me a story
+        </button>
       </div>
       <label className="field">
-        <span>{kind === 'see' ? 'What do you want to see?' : 'What should someone do for you?'}</span>
+        <span>{kind === 'see' ? 'What do you want to see?' : kind === 'story' ? 'Whose story, and about what?' : 'What should someone do for you?'}</span>
         <textarea
           ref={box}
           rows={3}
           value={text}
           onChange={(e) => setText(e.target.value)}
           maxLength={200}
-          placeholder={kind === 'see' ? 'Show me Dadi when she sees the bride' : 'Touch Nani’s feet for me'}
+          placeholder={kind === 'see' ? 'Show me Dadi when she sees the bride' : kind === 'story' ? 'Ask Dadi how she celebrated Diwali as a girl' : 'Touch Nani’s feet for me'}
         />
       </label>
       <label className="check">
@@ -296,13 +299,15 @@ function MyRequests({ api, feed, now }: { api: RoomApi; feed: Feed; now: number 
     <section className="my-requests">
       <h2>What you asked for</h2>
       {asks.map((r) => (
-        <MyRequest key={r.id} request={r} proofs={feed.proofs.filter((p) => p.requestId === r.id)} api={api} now={now} />
+        <MyRequest key={r.id} request={r} proofs={feed.proofs.filter((p) => p.requestId === r.id)} stories={feed.stories} api={api} now={now} />
       ))}
     </section>
   );
 }
 
-function MyRequest({ request, proofs, api, now }: { request: Req; proofs: Proof[]; api: RoomApi; now: number }) {
+function MyRequest({ request, proofs, stories, api, now }: { request: Req; proofs: Proof[]; stories: Story[]; api: RoomApi; now: number }) {
+  // For a story request, each recorded answer is also a story with its words written down.
+  const storyOf = (p: Proof) => stories.find((s) => s.requestId === request.id && s.audioUrl === p.url);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -346,6 +351,7 @@ function MyRequest({ request, proofs, api, now }: { request: Req; proofs: Proof[
             {proofs.map((p) => (
               <li key={p.id}>
                 <ProofView proof={p} />
+                {storyOf(p) && <StoryWords story={storyOf(p)!} />}
                 <button type="button" className="btn btn-primary" disabled={busy} onClick={() => run(() => api.accept(request.id, p.id))}>
                   Pick {p.memberName}&rsquo;s
                 </button>
@@ -358,6 +364,7 @@ function MyRequest({ request, proofs, api, now }: { request: Req; proofs: Proof[
       {won && (
         <>
           <ProofView proof={won} />
+          {storyOf(won) && <StoryWords story={storyOf(won)!} />}
           <p className="muted small">From {won.memberName}.</p>
           {won.thanks ? <ThanksView thanks={won.thanks} from="You" /> : <ThanksComposer api={api} proof={won} />}
         </>

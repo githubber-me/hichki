@@ -390,7 +390,7 @@ app.post('/api/gatherings/:id/requests', async (req) => {
   const body = (req.body ?? {}) as Record<string, unknown>;
 
   const kind = clean(body.kind, 10) as RequestKind;
-  if (!['see', 'do', 'letter'].includes(kind)) throw new HttpError(400, 'Choose what kind of request this is.');
+  if (!['see', 'do', 'letter', 'story'].includes(kind)) throw new HttpError(400, 'Choose what kind of request this is.');
   if (kind === 'letter' && !flags().jab_kholna) throw new HttpError(409, 'Voice letters are switched off right now.');
 
   const text = clean(body.text, 140);
@@ -514,6 +514,14 @@ app.post('/api/requests/:rid/proofs', async (req) => {
   if (!open) throw new HttpError(409, 'This one isn’t taking answers any more.');
   if (!isOwnFile(gathering.id, body.file)) throw new HttpError(400, 'Attach a photo or a voice note.');
 
+  // A story request is answered by recording the story: it needs audio and a teller,
+  // and it also becomes a Dadi ki kahani story, transcribed and translated.
+  const teller = clean(body.teller, 40);
+  if (request.kind === 'story') {
+    if (mediaOf(body.file) !== 'audio') throw new HttpError(400, 'Record the story, then send it.');
+    if (!teller) throw new HttpError(400, 'Say who is telling the story.');
+  }
+
   const proof = createProof({
     request_id: request.id,
     member_id: c.member.id,
@@ -524,6 +532,19 @@ app.post('/api/requests/:rid/proofs', async (req) => {
 
   req.log.info({ event: 'proof_sent', gatheringId: gathering.id, requestId: request.id, media: proof.media }, 'proof sent');
   emitAll(gathering.id, 'proof', proofView(proof, c.member.name));
+  if (request.kind === 'story') {
+    const story = createStory({
+      gathering_id: gathering.id,
+      member_id: c.member.id,
+      teller,
+      audio_file: body.file,
+      language: clean(body.language, 10) || null,
+      target_language: clean(body.targetLanguage, 10) || 'en-IN',
+      request_id: request.id,
+    });
+    emitAll(gathering.id, 'story', storyView(story));
+    void processStory(story.id);
+  }
   return { proof: proofView(proof, c.member.name) };
 });
 
