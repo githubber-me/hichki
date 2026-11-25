@@ -100,18 +100,22 @@ Called only from the server, so the key never reaches a browser.
 
 ### Flagsmith
 
-The server uses the Node SDK with local evaluation, refreshes flags every few seconds, and pushes any change to every connected phone. Flipping a flag in the Flagsmith dashboard changes the whole room within seconds.
+The server uses the Node SDK (`@flagsmith/nodejs`) with local evaluation, refreshes flags every `FLAGSMITH_REFRESH_SECONDS`, and pushes any change to every connected phone as a `flags` event. Flipping a flag in the Flagsmith dashboard changes the whole room within seconds. Flags are enforced on the server too, so a hidden button can't be called directly. If Flagsmith can't be reached, every flag falls back to on.
 
 | Flag | Type | Effect |
 | --- | --- | --- |
 | `hichki` | On/off | Shows or hides the Hichki button |
 | `jab_kholna` | On/off | Allows locked voice letters |
 | `ai_requests` | On/off | Off means typed requests only; enforced on the server |
-| `request_mode` | Multivariate (stretch) | Experiment per gathering: whole room answers (`room`) or one named person (`nominee`). Conversion event: `request_fulfilled` |
+| `request_mode` | Multivariate (stretch) | Experiment per gathering (identity `gathering_CODE`): whole room answers (`room`) or one named person (`nominee`). Exposure is recorded when a request is created; conversion event `request_fulfilled` carries the seconds it took. Needs `FLAGSMITH_EXPERIMENTS=on` |
 
 ### NudgeBee
 
 The NudgeBee agent runs in the cluster and reads Kubernetes events, pod status, logs and metrics. The app helps it by writing structured JSON logs, setting resource requests and limits, and exposing health checks. To show it working, we break the app on purpose and ask NudgeBee to find the cause.
+
+## API
+
+Every route and live event the web page uses is in [docs/api.md](docs/api.md).
 
 ## Configuration
 
