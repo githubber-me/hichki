@@ -448,10 +448,9 @@ function Profile({ api: roomApi, gatheringId, me }: { api: RoomApi; gatheringId:
             <input value={name} onChange={(e) => { setName(e.target.value); setError(''); }} maxLength={40} />
           </label>
           <div className="profile-actions">
-            <label className="btn btn-quiet btn-small">
+            <PhotoButton className="btn btn-quiet btn-small" facing="user" onPick={(f) => pickPhoto(f)}>
               {me.avatarUrl ? 'Change photo' : 'Add a photo'}
-              <input type="file" accept="image/*" hidden onChange={(e) => pickPhoto(e.target.files?.[0])} />
-            </label>
+            </PhotoButton>
             {me.avatarUrl && (
               <button type="button" className="btn btn-quiet btn-small" disabled={busy} onClick={() => save({ photo: null })}>
                 Remove photo
@@ -550,10 +549,9 @@ function Welcome({
             </span>
           )}
           <div className="profile-actions">
-            <label className="btn btn-quiet btn-small">
+            <PhotoButton className="btn btn-quiet btn-small" facing="user" disabled={busy} onPick={(f) => pickPhoto(f)}>
               {member.avatarUrl ? 'Change photo' : 'Add a photo'}
-              <input type="file" accept="image/*" hidden disabled={busy} onChange={(e) => pickPhoto(e.target.files?.[0])} />
-            </label>
+            </PhotoButton>
             {member.avatarUrl && (
               <button type="button" className="btn btn-quiet btn-small" disabled={busy} onClick={() => run(() => update({ photo: null }))}>
                 Remove photo

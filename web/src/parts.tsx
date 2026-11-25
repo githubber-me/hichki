@@ -1,6 +1,7 @@
 // Small pieces shared by the guest, host and away screens.
 // Class names here are styled by theme.css.
 
+import { Camera } from './camera.tsx';
 import { useState, type ReactNode } from 'react';
 import type { Presence, Proof, RoomApi, Story } from './api.ts';
 import { recordingName, shrinkPhoto, useRecorder } from './recorder.ts';
@@ -67,32 +68,28 @@ export function RecordButton({
 }
 
 // Opens the camera or the photo library, whichever the person chooses.
+// Opens the in-app camera (with the gallery one tap away inside it).
 export function PhotoButton({
   onPick,
   children,
   className = 'btn btn-primary',
   disabled,
+  facing = 'environment',
 }: {
   onPick: (file: File) => void;
   children: ReactNode;
   className?: string;
   disabled?: boolean;
+  facing?: 'environment' | 'user';
 }) {
+  const [open, setOpen] = useState(false);
   return (
-    <label className={`${className} file-btn`} aria-disabled={disabled}>
-      <input
-        type="file"
-        accept="image/*"
-        hidden
-        disabled={disabled}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = '';
-          if (file) onPick(file);
-        }}
-      />
-      {children}
-    </label>
+    <>
+      <button type="button" className={`${className} file-btn`} disabled={disabled} onClick={() => setOpen(true)}>
+        {children}
+      </button>
+      {open && <Camera facing={facing} onPhoto={onPick} onClose={() => setOpen(false)} />}
+    </>
   );
 }
 

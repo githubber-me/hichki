@@ -624,3 +624,17 @@ a.btn, a.banner { text-decoration: none; }
 .more-ways > summary::-webkit-details-marker { display: none; }
 .more-ways[open] > summary { margin-bottom: 14px; color: var(--rice); }
 .choice { flex-wrap: wrap; }
+
+/* ---------- In-app camera ---------- */
+.camera { position: fixed; inset: 0; z-index: 50; display: grid; grid-template-rows: 1fr auto; background: #120806; color: var(--rice); }
+.camera-view { position: relative; overflow: hidden; display: grid; place-items: center; }
+.camera-view video, .camera-view img { width: 100%; height: 100%; object-fit: cover; }
+.camera-view video.is-mirrored { transform: scaleX(-1); }
+.camera-note { position: absolute; inset: auto 24px 40%; text-align: center; font-size: 16px; line-height: 1.4; color: var(--rice); }
+.camera-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 22px calc(18px + env(safe-area-inset-bottom)); background: var(--wall-deep); }
+.camera-bar .btn { min-width: 96px; }
+.camera-side { min-width: 84px; }
+.camera-shutter { width: 74px; height: 74px; border-radius: 50%; border: 0; background: var(--rice); box-shadow: 0 0 0 5px var(--wall-deep), 0 0 0 8px var(--rice); cursor: pointer; flex: none; }
+.camera-shutter:active { transform: scale(0.94); }
+.camera-shutter:disabled { opacity: 0.4; }
+.camera-close { position: absolute; top: calc(12px + env(safe-area-inset-top)); right: 14px; width: 42px; height: 42px; border-radius: 50%; border: 0; font-size: 28px; line-height: 1; color: var(--rice); background: rgba(18, 8, 6, 0.55); cursor: pointer; }
