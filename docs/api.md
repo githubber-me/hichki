@@ -132,7 +132,8 @@ A request is one card in the room.
   "liveAt": "2026-11-27T13:00:00+05:30",  // optional: schedule it; default now
   "until": null,                  // optional: stop taking answers after this
   "unlockAt": null,               // letters: open at a time instead of (or as well as) a moment
-  "nomineeId": null               // optional: ask one guest by name
+  "nomineeId": null,              // optional: ask one guest by name
+  "audience": "room"              // "room" (everyone) or "one" (nomineeId, or whoever is free); left out, the Flagsmith request_mode experiment decides
 }
 ```
 

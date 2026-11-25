@@ -125,6 +125,7 @@ export type Feed = {
   me: Member | null;
   flags: Flags;
   packs: PackItem[];
+  requestMode: 'room' | 'nominee'; // Flagsmith experiment default (away person only)
   hichkis: HichkiEntry[]; // newest first
   // "While you were away" (away person only; null when there's nothing new).
   catchUp: CatchUp | null;
@@ -156,6 +157,7 @@ export type NewRequest = {
   until?: number | null;
   unlockAt?: number | null;
   nomineeId?: string | null;
+  audience?: 'room' | 'one';
 };
 
 export type Stored = { file: string; url: string; media: 'photo' | 'audio' | 'video'; mime: string; bytes: number };

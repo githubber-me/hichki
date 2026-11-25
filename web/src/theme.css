@@ -705,3 +705,4 @@ a.btn, a.banner { text-decoration: none; }
 .set-aside > summary { cursor: pointer; font-size: 14px; color: var(--rice-soft); padding: 6px 0; }
 .photo-grid li.is-loved .proof-media { box-shadow: 0 0 0 2px var(--haldi); }
 .thanks-video.is-mirrored { transform: scaleX(-1); }
+.nominee-picker { display: grid; gap: 8px; }

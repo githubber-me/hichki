@@ -149,6 +149,9 @@ function Composer({ api, feed }: { api: RoomApi; feed: Feed }) {
   const [text, setText] = useState('');
   const [kind, setKind] = useState<Kind>('see');
   const [later, setLater] = useState(false);
+  // Ask everyone, or one person by name. The default comes from the Flagsmith experiment.
+  const [who, setWho] = useState<'room' | 'one'>(feed.requestMode === 'nominee' ? 'one' : 'room');
+  const [nominee, setNominee] = useState('');
   const [liveAt, setLiveAt] = useState(() => toLocalInput(Date.now() + 10 * 60000));
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
@@ -193,6 +196,8 @@ function Composer({ api, feed }: { api: RoomApi; feed: Feed }) {
         audioFile: draft?.file,
         language: draft?.language,
         liveAt: later ? new Date(liveAt).getTime() : null,
+        audience: who === 'one' ? 'one' : 'room',
+        nomineeId: who === 'one' ? nominee || null : null,
       });
       setDraft(null);
       setText('');
@@ -269,6 +274,32 @@ function Composer({ api, feed }: { api: RoomApi; feed: Feed }) {
           placeholder={kind === 'see' ? 'Show me Dadi when she sees the bride' : kind === 'story' ? 'Ask Dadi how she celebrated Diwali as a girl' : 'Touch Nani’s feet for me'}
         />
       </label>
+      {kind !== 'letter' && feed.presence.members.length > 0 && (
+        <div className="nominee-picker">
+          <div className="choice">
+            <button type="button" className={who === 'room' ? 'is-active' : ''} onClick={() => setWho('room')}>
+              Ask everyone
+            </button>
+            <button type="button" className={who === 'one' ? 'is-active' : ''} onClick={() => setWho('one')}>
+              Ask one person
+            </button>
+          </div>
+          {who === 'one' && (
+            <label className="field">
+              <span>Who?</span>
+              <select value={nominee} onChange={(e) => setNominee(e.target.value)}>
+                <option value="">Whoever is free right now</option>
+                {feed.presence.members.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                    {m.online ? '' : ' (not here right now)'}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+      )}
       <label className="check">
         <input type="checkbox" checked={later} onChange={(e) => setLater(e.target.checked)} /> Send it later
       </label>

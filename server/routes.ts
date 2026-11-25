@@ -331,6 +331,8 @@ app.get('/api/gatherings/:id/feed', async (req) => {
     flags: flags(),
     // Ready-made requests for this occasion (away person only).
     packs: c.role === 'away' ? packFor(packs(), g.occasion) : [],
+    // The Flagsmith experiment's default for this gathering: ask everyone, or one person.
+    requestMode: c.role === 'away' ? await requestMode(g.id) : 'room',
     // The hichki timeline, newest first: who remembered, when, and their line if any.
     hichkis: recentHichkis(g.id).map((h) => ({ from: h.from_name, memberId: h.member_id, note: h.note, at: h.created_at })),
     // "While you were away" for the away person (null when there's nothing to show).
@@ -422,11 +424,14 @@ app.post('/api/gatherings/:id/requests', async (req) => {
   if (unlockAt !== null && unlockAt < liveAt) throw new HttpError(400, 'A letter can’t open before it appears.');
 
   // The request_mode experiment: in "nominee" gatherings, one person is asked by name.
+  // audience: "room" (everyone), "one" (nomineeId), or left out to use the experiment's default.
+  const audience = clean(body.audience, 10);
   let nomineeId: string | null = clean(body.nomineeId, 64) || null;
   if (nomineeId && getMember(nomineeId)?.gathering_id !== g.id) nomineeId = null;
   let mode: 'room' | 'nominee' = nomineeId ? 'nominee' : 'room';
-  if (!nomineeId && kind !== 'letter') {
-    mode = await requestMode(g.id);
+  if (audience === 'room') nomineeId = null;
+  else if (!nomineeId && kind !== 'letter') {
+    mode = audience === 'one' ? 'nominee' : await requestMode(g.id);
     if (mode === 'nominee') nomineeId = pickNominee(g.id);
   }
 
