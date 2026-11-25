@@ -580,3 +580,11 @@ a.btn, a.banner { text-decoration: none; }
 .welcome-photo { display: grid; justify-items: center; gap: 10px; }
 .welcome-big { width: 96px; height: 96px; font-size: 40px; box-shadow: 0 0 0 3px var(--rice), 0 0 0 7px var(--rice-faint); }
 .welcome .badge-verified { justify-self: start; }
+
+/* ---------- Ideas for the occasion (away composer) ---------- */
+.ideas { width: 100%; display: grid; gap: 8px; margin-top: 14px; text-align: left; }
+.ideas ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
+.idea { flex: none; width: 200px; min-height: 74px; scroll-snap-align: start; text-align: left; font: inherit; font-size: 15px; line-height: 1.3; color: var(--rice); background: var(--wall-deep); border: 0; border-radius: var(--hand-sm); padding: 10px 12px 10px 30px; cursor: pointer; position: relative; }
+.idea::before { content: ''; position: absolute; left: 10px; top: 13px; width: 12px; height: 12px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--haldi); }
+.idea-do::before { border-radius: 2px; transform: rotate(45deg); }
+.idea:active { transform: scale(0.98); }

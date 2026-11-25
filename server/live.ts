@@ -8,7 +8,7 @@
 import type { Socket } from 'socket.io';
 import { io, log } from './app.ts';
 import { getGathering, getMember, listMembers, type RequestRow } from './db.ts';
-import { flags, onFlagsChange } from './flags.ts';
+import { flags, onFlagsChange, onPacksChange } from './flags.ts';
 import { requestView } from './views.ts';
 
 const roomOf = (gatheringId: string) => `g:${gatheringId}:room`;
@@ -75,6 +75,9 @@ export async function disconnectMember(gatheringId: string, memberId: string) {
 
 // A flag flipped in Flagsmith: tell every phone in every gathering.
 onFlagsChange((next) => io.emit('flags', next));
+
+// The occasion packs changed in Flagsmith: every phone gets all of them and picks its own.
+onPacksChange((next) => io.emit('packs', next));
 
 function bump(map: Map<string, number>, key: string, by: number) {
   map.set(key, Math.max(0, (map.get(key) ?? 0) + by));

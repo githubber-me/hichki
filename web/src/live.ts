@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
-import { roomApi, type Feed, type Flags, type Presence, type Proof, type PublicGathering, type Req, type Story, type Who } from './api.ts';
+import { roomApi, type Feed, type Flags, type PackItem, type Presence, type Proof, type PublicGathering, type Req, type Story, type Who } from './api.ts';
 
 export type Hichki = { from: string; at: number };
 export type Accepted = { requestId: string; proofId: string; memberId: string; memberName: string; points: number };
@@ -49,6 +49,10 @@ export function useRoom(id: string, who: Who | null) {
       setError(e.error);
     });
     socket.on('flags', (flags: Flags) => patch((f) => ({ ...f, flags })));
+    // Occasion packs edited in Flagsmith: keep only this gathering's, and only for the away screen.
+    socket.on('packs', (all: Record<string, PackItem[]>) =>
+      patch((f) => (f.role === 'away' ? { ...f, packs: all[f.gathering.occasion.toLowerCase()] ?? all.gathering ?? f.packs } : f)),
+    );
     socket.on('gathering', (gathering: PublicGathering) => patch((f) => ({ ...f, gathering })));
     socket.on('presence', (presence: Presence) =>
       patch((f) => {

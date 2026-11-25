@@ -96,11 +96,15 @@ export type Story = {
   createdAt: number;
 };
 
+// A ready-made request idea for the occasion (from Flagsmith's `request_packs`).
+export type PackItem = { kind: 'see' | 'do'; text: string };
+
 export type Feed = {
   gathering: PublicGathering;
   role: Role;
   me: Member | null;
   flags: Flags;
+  packs: PackItem[];
   presence: Presence;
   requests: Req[];
   proofs: Proof[];

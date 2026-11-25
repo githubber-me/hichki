@@ -14,6 +14,7 @@
 import { DefaultFlag, Flagsmith } from '@flagsmith/nodejs';
 import { config } from './config.ts';
 import { log } from './app.ts';
+import { DEFAULT_PACKS, parsePacks, type Packs } from './packs.ts';
 
 export type FlagState = { hichki: boolean; jab_kholna: boolean; ai_requests: boolean };
 export type RequestMode = 'room' | 'nominee';
@@ -27,6 +28,9 @@ export const flagsmithEnabled = serverKey.length > 0;
 
 let current: FlagState = { ...DEFAULTS };
 let source: 'flagsmith' | 'defaults' = 'defaults';
+// Occasion packs, from the `request_packs` flag's value (see packs.ts).
+let currentPacks: Packs = DEFAULT_PACKS;
+const packListeners = new Set<(packs: Packs) => void>();
 const listeners = new Set<(flags: FlagState) => void>();
 
 const client = flagsmithEnabled
@@ -60,6 +64,14 @@ async function refresh() {
       ai_requests: flags.isFeatureEnabled('ai_requests'),
     };
     source = 'flagsmith';
+
+    const packs = (flags.isFeatureEnabled('request_packs') && parsePacks(flags.getFeatureValue('request_packs'))) || DEFAULT_PACKS;
+    if (JSON.stringify(packs) !== JSON.stringify(currentPacks)) {
+      log.info({ event: 'packs_changed', occasions: Object.keys(packs) }, 'occasion packs changed');
+      currentPacks = packs;
+      for (const listener of packListeners) listener(currentPacks);
+    }
+
     if (JSON.stringify(next) !== JSON.stringify(current)) {
       log.info({ event: 'flags_changed', from: current, to: next }, 'flags changed');
       current = next;
@@ -89,6 +101,14 @@ export function flagStatus() {
 
 export function onFlagsChange(listener: (flags: FlagState) => void) {
   listeners.add(listener);
+}
+
+export function packs(): Packs {
+  return currentPacks;
+}
+
+export function onPacksChange(listener: (packs: Packs) => void) {
+  packListeners.add(listener);
 }
 
 // ---------------------------------------------------------------------------

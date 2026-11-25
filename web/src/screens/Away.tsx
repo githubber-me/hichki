@@ -224,6 +224,20 @@ function Composer({ api, feed }: { api: RoomApi; feed: Feed }) {
           {voice ? 'Type it instead' : 'Write a request'}
         </button>
         {error && <p className="error">{error}</p>}
+        {feed.packs.length > 0 && (
+          <div className="ideas">
+            <p className="eyebrow">Ideas for the {feed.gathering.occasion}</p>
+            <ul>
+              {feed.packs.map((idea) => (
+                <li key={idea.text}>
+                  <button type="button" className={`idea idea-${idea.kind}`} onClick={() => open({ kind: idea.kind, text: idea.text })}>
+                    {idea.text}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
     );
   }

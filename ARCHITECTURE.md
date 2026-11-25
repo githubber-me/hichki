@@ -120,6 +120,7 @@ The server uses the Node SDK (`@flagsmith/nodejs`) with local evaluation, refres
 | --- | --- | --- |
 | `hichki` | On/off | Shows or hides the Hichki button |
 | `jab_kholna` | On/off | Allows locked voice letters |
+| `request_packs` | On/off with a JSON value | Ready-made requests per occasion (wedding, Diwali, trip and more) shown to the away person as ideas. Editing the value in Flagsmith updates every away screen live ([server/packs.ts](server/packs.ts) has the shape and the defaults) |
 | `ai_requests` | On/off | Off means typed requests only; enforced on the server |
 | `request_mode` | Multivariate (stretch) | Experiment per gathering (identity `gathering_CODE`): whole room answers (`room`) or one named person (`nominee`). Exposure is recorded when a request is created; conversion event `request_fulfilled` carries the seconds it took. Needs `FLAGSMITH_EXPERIMENTS=on` |
 

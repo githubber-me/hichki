@@ -42,7 +42,8 @@ import {
   setVerified,
 } from './db.ts';
 import { isOwnFile, mediaOf, mediaUrl, saveUpload, UploadError } from './files.ts';
-import { flagStatus, flags, requestMode, trackFulfilled } from './flags.ts';
+import { flagStatus, flags, packs, requestMode, trackFulfilled } from './flags.ts';
+import { packFor } from './packs.ts';
 import { broadcastPresence, disconnectMember, emitAll, emitAway, onlineMemberIds, presence, publishRequest } from './live.ts';
 import { sarvamEnabled, SarvamError, toCard, transcribe, translate } from './sarvam.ts';
 import { signedInGuest, signInEnabled, SignInError } from './auth.ts';
@@ -316,6 +317,8 @@ app.get('/api/gatherings/:id/feed', async (req) => {
     role: c.role,
     me: c.role === 'guest' ? { id: c.member.id, name: c.member.name, points: c.member.points } : null,
     flags: flags(),
+    // Ready-made requests for this occasion (away person only).
+    packs: c.role === 'away' ? packFor(packs(), g.occasion) : [],
     presence: presence(g.id),
     requests: listRequests(g.id)
       .map((r) => requestView(r, viewer))
