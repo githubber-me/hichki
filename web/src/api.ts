@@ -31,6 +31,150 @@ export const api = {
   config: () => request<{ publicBaseUrl: string }>('/api/config'),
 };
 
+// ---------------------------------------------------------------------------
+// The room: everything a screen needs once someone is inside a gathering.
+// Shapes match docs/api.md.
+// ---------------------------------------------------------------------------
+
+export type Role = 'guest' | 'host' | 'away';
+export type Flags = { hichki: boolean; jab_kholna: boolean; ai_requests: boolean };
+export type Kind = 'see' | 'do' | 'letter';
+
+export type Req = {
+  id: string;
+  kind: Kind;
+  status: 'scheduled' | 'open' | 'done' | 'closed' | 'locked' | 'unlocked';
+  text: string | null;
+  textOriginal: string | null;
+  language: string | null;
+  audioUrl: string | null;
+  transcript: string | null;
+  openWhen: string | null;
+  nomineeId: string | null;
+  liveAt: number;
+  until: number | null;
+  unlockAt: number | null;
+  acceptedProofId: string | null;
+  fulfilledAt: number | null;
+  createdAt: number;
+};
+
+export type Proof = {
+  id: string;
+  requestId: string;
+  memberId: string;
+  memberName: string;
+  media: 'photo' | 'audio' | 'video';
+  url: string;
+  caption: string | null;
+  createdAt: number;
+};
+
+export type Story = {
+  id: string;
+  teller: string;
+  status: 'processing' | 'ready' | 'failed';
+  error: string | null;
+  audioUrl: string;
+  language: string | null;
+  targetLanguage: string | null;
+  transcript: string | null;
+  translation: string | null;
+  createdAt: number;
+};
+
+export type Feed = {
+  gathering: PublicGathering;
+  role: Role;
+  me: Member | null;
+  flags: Flags;
+  presence: Presence;
+  requests: Req[];
+  proofs: Proof[];
+  stories: Story[];
+  now: number;
+};
+
+export type Draft = {
+  kind: Kind;
+  text: string;
+  textOriginal: string | null;
+  transcript: string | null;
+  language: string | null;
+  file: string;
+};
+
+export type NewRequest = {
+  kind: Kind;
+  text?: string;
+  textOriginal?: string | null;
+  language?: string | null;
+  transcript?: string | null;
+  audioFile?: string;
+  openWhen?: string;
+  liveAt?: number | null;
+  until?: number | null;
+  unlockAt?: number | null;
+  nomineeId?: string | null;
+};
+
+export type Stored = { file: string; url: string; media: 'photo' | 'audio' | 'video'; mime: string; bytes: number };
+
+// Who is calling. Guests are known by their member id, the host and the away
+// person by the token in their link.
+export type Who = { role: 'guest'; memberId: string } | { role: 'host' | 'away'; token: string };
+
+export function roomApi(id: string, who: Who) {
+  const auth: Record<string, string> =
+    who.role === 'guest' ? { 'x-hichki-member': who.memberId } : { 'x-hichki-token': who.token };
+
+  async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+    const res = await fetch(path, {
+      method,
+      headers: body === undefined ? auth : { ...auth, 'content-type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new ApiError(data.error ?? 'Something went wrong. Try again.', res.status);
+    return data as T;
+  }
+
+  const g = `/api/gatherings/${id}`;
+  return {
+    feed: () => call<Feed>('GET', `${g}/feed`),
+    // Upload first, then hand the returned `file` to whatever uses it.
+    upload: async (blob: Blob, filename: string): Promise<Stored> => {
+      const form = new FormData();
+      form.append('file', blob, filename);
+      const res = await fetch(`${g}/uploads`, { method: 'POST', headers: auth, body: form });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new ApiError(data.error ?? 'That didn’t upload. Try again.', res.status);
+      return data as Stored;
+    },
+    draft: (file: string) => call<Draft>('POST', `${g}/requests/draft`, { file }),
+    createRequest: (body: NewRequest) => call<{ request: Req }>('POST', `${g}/requests`, body),
+    closeRequest: (rid: string) => call<{ request: Req }>('DELETE', `/api/requests/${rid}`),
+    sendProof: (rid: string, file: string, caption?: string) =>
+      call<{ proof: Proof }>('POST', `/api/requests/${rid}/proofs`, { file, caption }),
+    accept: (rid: string, proofId: string) => call<{ request: Req }>('POST', `/api/requests/${rid}/accept`, { proofId }),
+    hichki: () => call<{ ok: true }>('POST', `${g}/hichki`),
+    addStory: (file: string, teller: string, language?: string, targetLanguage?: string) =>
+      call<Story>('POST', `${g}/stories`, { file, teller, language, targetLanguage }),
+  };
+}
+
+export type RoomApi = ReturnType<typeof roomApi>;
+
+// Carries the HTTP status, so screens can tell "switched off" (409) from "try again".
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message);
+  }
+}
+
 // A random id for this phone, kept across visits so people never have to sign in.
 export function deviceId(): string {
   let id = localStorage.getItem('hichki:device');

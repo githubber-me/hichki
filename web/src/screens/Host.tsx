@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { api, publicBaseUrl, saved, type PublicGathering } from '../api.ts';
-import { useLive } from '../live.ts';
+import { useRoom } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
+import { HichkiButton, Leaderboard } from '../parts.tsx';
 
 export function Host({ id, token: urlToken }: { id: string; token: string }) {
   const token = urlToken || saved.hostToken(id) || '';
@@ -12,7 +13,9 @@ export function Host({ id, token: urlToken }: { id: string; token: string }) {
   const [qr, setQr] = useState('');
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
-  const { presence, error: liveError } = useLive(token ? { gatheringId: id, role: 'host', token } : null);
+  const room = useRoom(id, token ? { role: 'host', token } : null);
+  const presence = room.feed?.presence ?? null;
+  const liveError = room.error;
 
   useEffect(() => {
     api.getGathering(id).then((r) => setGathering(r.gathering), (e) => setError(e.message));
@@ -77,6 +80,8 @@ export function Host({ id, token: urlToken }: { id: string; token: string }) {
         </p>
       </section>
 
+      {room.api && room.feed?.flags.hichki && <HichkiButton api={room.api} awayName={gathering.awayName} />}
+      {presence && <Leaderboard presence={presence} limit={5} />}
       <MemberList presence={presence} />
     </main>
   );
