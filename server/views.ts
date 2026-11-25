@@ -42,6 +42,9 @@ export function requestView(r: RequestRow, viewer: Viewer) {
     transcript: hidden ? null : r.transcript,
     openWhen: r.open_when,
     nomineeId: r.nominee_id,
+    // Who asked: 'main' (the gathering's away person) or another away person's id.
+    askedBy: r.asked_by ?? 'main',
+    askedByName: r.asked_by_name ?? null,
     liveAt: r.live_at,
     until: r.until,
     unlockAt: r.unlock_at,

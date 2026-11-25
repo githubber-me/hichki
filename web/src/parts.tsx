@@ -4,7 +4,8 @@
 import { Camera } from './camera.tsx';
 import { T, useLang } from './lang.tsx';
 import { gloss, hichkiWord, w } from './words.ts';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import type { HichkiEntry, Presence, Proof, RoomApi, Story } from './api.ts';
 import { recordingName, shrinkPhoto, useRecorder } from './recorder.ts';
 
@@ -109,17 +110,23 @@ export function uploadRecording(api: RoomApi, blob: Blob) {
 }
 
 // One tap tells the person who couldn't come that someone just thought of them.
-export function HichkiButton({ api, awayName }: { api: RoomApi; awayName: string }) {
+// With more than one person away, the tap first asks who it's for, so nobody
+// buzzes everyone by accident.
+export function HichkiButton({ api, awayName, people = [] }: { api: RoomApi; awayName: string; people?: { id: string; name: string }[] }) {
   const [taps, setTaps] = useState(0);
+  const [picking, setPicking] = useState(false);
+  const many = people.length > 1;
   const [note, setNote] = useState('');
   const [message, setMessage] = useState('');
 
-  async function tap() {
+  async function send(to?: string) {
+    setPicking(false);
     setTaps((n) => n + 1);
     navigator.vibrate?.(30);
+    const name = to === 'all' ? 'everyone who couldn\u2019t come' : people.find((p) => p.id === to)?.name ?? awayName;
     try {
-      await api.hichki(note.trim() || undefined);
-      setMessage(`Sent. ${awayName}\u2019s phone just buzzed.`);
+      await api.hichki(note.trim() || undefined, many ? to : undefined);
+      setMessage(to === 'all' ? 'Sent to everyone who couldn\u2019t come.' : `Sent. ${name}\u2019s phone just buzzed.`);
       setNote('');
     } catch (e) {
       setMessage((e as Error).message);
@@ -127,29 +134,100 @@ export function HichkiButton({ api, awayName }: { api: RoomApi; awayName: string
     window.setTimeout(() => setMessage(''), 2600);
   }
 
+  const who = many ? people.map((p) => p.name).join(', ').replace(/, ([^,]*)$/, ' or $1') : awayName;
   return (
     <div className="hichki">
       {/* The key restarts the animation on every tap. */}
-      <button type="button" key={taps} className={`hichki-btn ${taps ? 'is-sent' : ''}`} onClick={tap} aria-label={`Send ${awayName} a hichki`}>
+      <button
+        type="button"
+        key={taps}
+        className={`hichki-btn ${taps ? 'is-sent' : ''}`}
+        onClick={() => (many ? setPicking((p) => !p) : send())}
+        aria-label={many ? 'Send a hichki' : `Send ${awayName} a hichki`}
+        aria-expanded={many ? picking : undefined}
+      >
         <span className="hichki-art" aria-hidden="true" />
         <span className="hichki-label" lang={hichkiWord().lang}>
           {hichkiWord().text}
         </span>
       </button>
-      <p className="hichki-hint" aria-live="polite">
-        {message || `Tap when you think of ${awayName}. They\u2019ll know they were remembered.`}
-      </p>
+      {picking ? (
+        <div className="hichki-pick" role="group" aria-label="Who are you thinking of?">
+          <p className="hichki-hint">Who are you thinking of?</p>
+          <div className="chips">
+            {people.map((p) => (
+              <button key={p.id} type="button" onClick={() => send(p.id)}>
+                {p.name}
+              </button>
+            ))}
+          </div>
+          <button type="button" className="link-quiet" onClick={() => send('all')}>
+            All {people.length} of them
+          </button>
+        </div>
+      ) : (
+        <p className="hichki-hint" aria-live="polite">
+          {message || `Tap when you think of ${who}. They\u2019ll know they were remembered.`}
+        </p>
+      )}
       <label className="hichki-note">
         <span>Add when (optional)</span>
         <input
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && tap()}
+          onKeyDown={(e) => e.key === 'Enter' && (many ? setPicking(true) : send())}
           maxLength={120}
           placeholder="when Dadi started singing"
         />
       </label>
     </div>
+  );
+}
+
+// When a hichki arrives: the whole screen stops for a moment. Tap anywhere to close.
+export function HichkiArrival({
+  moment,
+  line,
+  children,
+  action,
+  onArrive,
+  hold = 12000,
+}: {
+  moment: { at: number } | null;
+  line: { text: string; lang: string };
+  children?: ReactNode;
+  action?: ReactNode;
+  onArrive?: () => void;
+  hold?: number;
+}) {
+  const [open, setOpen] = useState<number | null>(null);
+  useEffect(() => {
+    if (!moment) return;
+    setOpen(moment.at);
+    navigator.vibrate?.([120, 80, 120]);
+    onArrive?.();
+    const t = window.setTimeout(() => setOpen(null), hold);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [moment]);
+  if (open === null) return null;
+  return createPortal(
+    <div className="hichki-arrival" role="alertdialog" aria-live="assertive" aria-label={line.text} onClick={() => setOpen(null)} key={open}>
+      <div className="hichki-arrival-card" onClick={(e) => e.stopPropagation()}>
+        <span className="hichki-art" aria-hidden="true" />
+        <p className="hichki-line" lang={line.lang}>
+          {line.text}
+        </p>
+        {children && <p className="hichki-arrival-sub">{children}</p>}
+        <div className="hichki-arrival-actions">
+          {action}
+          <button type="button" className="btn btn-quiet btn-small" onClick={() => setOpen(null)}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 

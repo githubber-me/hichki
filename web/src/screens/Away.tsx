@@ -10,7 +10,7 @@ import { gloss, reasonIdeas, rememberedLine, w } from '../words.ts';
 import { LangProvider, T } from '../lang.tsx';
 import { ThanksComposer, ThanksView } from '../thanks.tsx';
 import { Yaadein } from './Yaadein.tsx';
-import { StoryWords, Leaderboard, MicIcon, ProofView, RecordButton, Tabs, ago, clock, uploadRecording } from '../parts.tsx';
+import { HichkiArrival, StoryWords, Leaderboard, MicIcon, ProofView, RecordButton, Tabs, ago, clock, uploadRecording } from '../parts.tsx';
 
 type Tab = 'ask' | 'gallery' | 'moments' | 'letters' | 'people';
 
@@ -29,15 +29,15 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
   // Tell the room this phone's timezone, so they can see the away person's clock.
   useEffect(() => {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (api && tz && feed && feed.gathering.awayTz !== tz) api.setAwayTz(tz).catch(() => {});
-  }, [api, feed?.gathering.awayTz]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (api && tz && feed && (feed.awayMe?.tz ?? feed.gathering.awayTz) !== tz) api.setAwayTz(tz).catch(() => {});
+  }, [api, feed?.awayMe?.tz]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [caughtUp, setCaughtUp] = useState(false);
   // Meera keeps her page open to feel each hichki: keep the screen on while it is.
   useWakeLock(!!token);
 
   // Duty ran out while the page was open: fetch again so the held hichkis show.
-  const dutyUntil = feed?.gathering.duty?.until ?? 0;
+  const dutyUntil = (feed?.awayMe ?? feed?.gathering)?.duty?.until ?? 0;
   useEffect(() => {
     if (!dutyUntil || !api) return;
     const t = window.setTimeout(() => window.dispatchEvent(new Event('hichki:reload')), Math.max(0, dutyUntil - Date.now()) + 1500);
@@ -49,6 +49,9 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
   if (!feed || !api) return <main className="screen"><p className="muted">Loading&hellip;</p></main>;
 
   const g = feed.gathering;
+  // This page belongs to one of the people who couldn't come: often the main one, maybe another.
+  const me = feed.awayMe ?? { id: 'main', name: g.awayName, reason: g.awayReason, tz: g.awayTz, duty: g.duty };
+  const gMe = { ...g, awayName: me.name, awayReason: me.reason, awayTz: me.tz, duty: me.duty };
 
   // Once the host wraps up, this same link opens on what the celebration left behind.
   // The room is still there underneath, one tap away.
@@ -64,7 +67,7 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
     <main className="screen has-tabs away">
       <header className="room-head">
         <p className="eyebrow">{g.name}</p>
-        <h1>Namaste, {g.awayName}</h1>
+        <h1>Namaste, {me.name}</h1>
         <p className="status">
           <span className={`dot ${here ? 'on' : ''}`} aria-hidden="true" />
           {here ? `${here} ${here === 1 ? 'person is' : 'people are'} there right now` : 'Nobody has the page open right now'}
@@ -75,16 +78,18 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
       </header>
 
       <SoundPrimer />
-      <HichkiMoment hichki={room.hichki} />
+      <HichkiMoment hichki={room.hichki} api={api} />
       {feed.catchUp && !caughtUp && <CatchUpCard api={api} feed={feed} catchUp={feed.catchUp} onDone={() => setCaughtUp(true)} />}
-      {tab === 'ask' && <ActivityStrip feed={feed} />}
 
       {tab === 'ask' && (
         <>
-          {feed.flags.hichki && <RoomHichki api={api} />}
-          <DutyControl api={api} gathering={g} onChange={() => setCaughtUp(false)} />
+          {/* Ask first: speak or type a request. */}
           <Composer api={api} feed={feed} />
+          <DutyControl api={api} gathering={gMe} onChange={() => setCaughtUp(false)} />
           <MyRequests api={api} feed={feed} now={room.now()} />
+          {/* Just the latest moment here; the whole timeline lives in Moments. */}
+          <ActivityStrip feed={feed} onMore={() => setTab('moments')} />
+          {feed.flags.hichki && <SendHichki api={api} feed={feed} />}
         </>
       )}
       {tab === 'letters' && feed.flags.jab_kholna && <Letters api={api} feed={feed} />}
@@ -92,7 +97,6 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
       {tab === 'moments' && <Moments feed={feed} api={api} canRecord={false} />}
       {tab === 'people' && (
         <>
-          {feed.flags.hichki && <RoomHichki api={api} />}
           <Leaderboard presence={feed.presence} limit={10} />
           <MemberList presence={feed.presence} onHichki={feed.flags.hichki ? (mid) => api.hichkiBack(mid) : undefined} />
         </>
@@ -104,32 +108,42 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
   );
 }
 
-// "Kisi ne yaad kiya": plays when someone at the gathering taps Hichki.
-function HichkiMoment({ hichki }: { hichki: Hichki | null }) {
-  const [show, setShow] = useState<Hichki | null>(null);
-
-  useEffect(() => {
-    if (!hichki) return;
-    setShow(hichki);
-    navigator.vibrate?.([120, 80, 120]);
-    playHichki();
-    const t = window.setTimeout(() => setShow(null), 6000);
-    return () => window.clearTimeout(t);
-  }, [hichki]);
-
-  if (!show) return null;
+// "Kisi ne yaad kiya": the whole screen stops when someone at the gathering taps Hichki.
+// One tap sends one back to them.
+function HichkiMoment({ hichki, api }: { hichki: Hichki | null; api: RoomApi }) {
+  const [sent, setSent] = useState('');
   return (
-    <div className="hichki-toast" role="status" key={show.at}>
-      <span className="hichki-art" aria-hidden="true" />
-      <div>
-        <p className="hichki-line" lang={rememberedLine().lang}>
-          {rememberedLine().text}
-        </p>
-        <p className="muted">
-          {show.from} thought of you, just now{show.note ? <>, <em><T text={show.note} toggle={false} /></em></> : null}
-        </p>
-      </div>
-    </div>
+    <HichkiArrival
+      moment={hichki}
+      line={rememberedLine()}
+      onArrive={() => {
+        setSent('');
+        playHichki();
+      }}
+      action={
+        hichki?.memberId ? (
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={!!sent}
+            onClick={() =>
+              api.hichkiBack(hichki.memberId!).then(
+                () => setSent(`Sent. ${hichki.from}\u2019s phone just buzzed.`),
+                (e: Error) => setSent(e.message),
+              )
+            }
+          >
+            {sent || `Send one back to ${hichki.from}`}
+          </button>
+        ) : null
+      }
+    >
+      {hichki && (
+        <>
+          {hichki.from} thought of you, just now{hichki.note ? <>, <em><T text={hichki.note} toggle={false} /></em></> : null}
+        </>
+      )}
+    </HichkiArrival>
   );
 }
 
@@ -159,7 +173,7 @@ function Composer({ api, feed }: { api: RoomApi; feed: Feed }) {
   const box = useRef<HTMLTextAreaElement>(null);
   const voice = feed.flags.ai_requests;
   // Ideas made for their situation (soldier, nurse, visa...) come first, then the occasion's.
-  const ideas = [...reasonIdeas(feed.gathering.awayReason), ...feed.packs];
+  const ideas = [...reasonIdeas((feed.awayMe ?? { reason: feed.gathering.awayReason }).reason), ...feed.packs];
 
   function open(d: Partial<Draft>, note = '') {
     setDraft(d);
@@ -327,7 +341,9 @@ function Composer({ api, feed }: { api: RoomApi; feed: Feed }) {
 
 // Everything the away person has asked for: waiting, scheduled, and answered.
 function MyRequests({ api, feed, now }: { api: RoomApi; feed: Feed; now: number }) {
-  const asks = feed.requests.filter((r) => r.kind !== 'letter' && r.status !== 'closed');
+  // Only your own requests: others who couldn't come have theirs on their own screens.
+  const meId = feed.awayMe?.id ?? 'main';
+  const asks = feed.requests.filter((r) => r.kind !== 'letter' && r.status !== 'closed' && (r.askedBy ?? 'main') === meId);
   if (asks.length === 0) return null;
   return (
     <section className="my-requests">
@@ -450,7 +466,7 @@ function Letters({ api, feed }: { api: RoomApi; feed: Feed }) {
   const [unlockAt, setUnlockAt] = useState(() => toLocalInput(Date.now() + 60 * 60000));
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
-  const letters = feed.requests.filter((r) => r.kind === 'letter');
+  const letters = feed.requests.filter((r) => r.kind === 'letter' && (r.askedBy ?? 'main') === (feed.awayMe?.id ?? 'main'));
 
   async function recorded(blob: Blob) {
     setBusy('Saving…');
@@ -591,23 +607,63 @@ function OpenLetter({ api, letter, proofs }: { api: RoomApi; letter: Req; proofs
   );
 }
 
-// Hichki back, to everyone at once: "Meera is thinking of you all".
-function RoomHichki({ api }: { api: RoomApi }) {
+// Sending a hichki from here is quiet on purpose: pick someone first. Everyone at
+// once takes one more tap to confirm, so it stays special and never turns into spam.
+function SendHichki({ api, feed }: { api: RoomApi; feed: Feed }) {
+  const [open, setOpen] = useState(false);
+  const [confirmAll, setConfirmAll] = useState(false);
   const [msg, setMsg] = useState('');
-  async function send() {
+  const people = [...feed.presence.members].sort((x, y) => Number(y.online) - Number(x.online));
+  const there = people.filter((m) => m.online).length;
+
+  async function send(fn: () => Promise<unknown>, done: string) {
     try {
-      await api.hichkiRoom();
-      setMsg('Sent. Every phone there just buzzed.');
+      await fn();
+      setMsg(done);
+      setOpen(false);
+      setConfirmAll(false);
     } catch (e) {
       setMsg((e as Error).message);
     }
-    window.setTimeout(() => setMsg(''), 3000);
+    window.setTimeout(() => setMsg(''), 3500);
   }
+
+  if (people.length === 0) return null;
   return (
-    <div className="room-hichki">
-      <button type="button" className="btn btn-quiet" onClick={send}>
-        Send everyone a hichki
-      </button>
+    <div className="send-hichki">
+      {!open ? (
+        <button type="button" className="link-quiet" onClick={() => setOpen(true)}>
+          Send someone a hichki
+        </button>
+      ) : (
+        <div className="send-hichki-pick" role="group" aria-label="Who are you thinking of?" ref={(el) => el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })}>
+          <p className="muted small">Who are you thinking of?</p>
+          <div className="chips">
+            {people.map((m) => (
+              <button key={m.id} type="button" className={m.online ? 'is-online' : ''} onClick={() => send(() => api.hichkiBack(m.id), `Sent. ${m.name}\u2019s phone just buzzed.`)}>
+                {m.name}
+              </button>
+            ))}
+          </div>
+          {confirmAll ? (
+            <span className="send-hichki-all">
+              <button type="button" className="btn btn-quiet btn-small" onClick={() => send(() => api.hichkiRoom(), 'Sent. Every phone there just buzzed.')}>
+                Yes, buzz all {people.length} phones
+              </button>
+              <button type="button" className="link-quiet" onClick={() => setConfirmAll(false)}>
+                Not now
+              </button>
+            </span>
+          ) : (
+            <button type="button" className="link-quiet" onClick={() => setConfirmAll(true)}>
+              Everyone there{there ? ` (${there} with it open)` : ''}
+            </button>
+          )}
+          <button type="button" className="link-quiet" onClick={() => (setOpen(false), setConfirmAll(false))}>
+            Cancel
+          </button>
+        </div>
+      )}
       {msg && <p className="muted small" aria-live="polite">{msg}</p>}
     </div>
   );

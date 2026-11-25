@@ -9,7 +9,7 @@ import { VideoNote } from '../thanks.tsx';
 import { reasonLine, rememberedLine } from '../words.ts';
 import { LangProvider, T } from '../lang.tsx';
 import type { Hichki } from '../live.ts';
-import { HichkiButton, Leaderboard, MicIcon, PhotoButton, RecordButton, Tabs, clock, uploadPhoto, uploadRecording } from '../parts.tsx';
+import { HichkiArrival, HichkiButton, Leaderboard, MicIcon, PhotoButton, RecordButton, Tabs, clock, uploadPhoto, uploadRecording } from '../parts.tsx';
 
 // What the QR code opens. First visit asks for a name; after that the phone remembers.
 export function Guest({ id }: { id: string }) {
@@ -157,9 +157,23 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
         </p>
         <AwayClock gathering={feed.gathering} />
         {reasonLine(feed.gathering.awayReason, away) && <p className="reason-line">{reasonLine(feed.gathering.awayReason, away)}</p>}
+        {/* Everyone else who couldn't come, each with their own line and clock. */}
+        {(feed.awayPeople ?? []).slice(1).map((p) => (
+          <div key={p.id} className="away-other">
+            <p className="status">
+              <span className={`dot ${feed.presence.awayOnlineIds?.includes(p.id) ? 'on' : ''}`} aria-hidden="true" />
+              {p.name} {feed.presence.awayOnlineIds?.includes(p.id) ? 'is with you right now' : 'couldn\u2019t come either'}
+            </p>
+            {reasonLine(p.reason, p.name) && <p className="reason-line">{reasonLine(p.reason, p.name)}</p>}
+            <AwayClock gathering={{ ...feed.gathering, awayName: p.name, awayTz: p.tz }} />
+          </div>
+        ))}
       </header>
 
       <DutyBanner gathering={feed.gathering} />
+      {(feed.awayPeople ?? []).slice(1).map((p) => (
+        <DutyBanner key={p.id} gathering={{ ...feed.gathering, awayName: p.name, awayTz: p.tz, duty: p.duty }} />
+      ))}
       <HichkiBack moment={room.hichkiBack} />
       {room.loved && (
         <p className="banner celebrate" role="status" key={`l${room.loved.proofId}`}>
@@ -181,7 +195,7 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
       {tab === 'now' && (
         <>
           {/* Hichki is the heart of it, so it always sits at the top. */}
-          {feed.flags.hichki && <HichkiButton api={roomApi} awayName={away} />}
+          {feed.flags.hichki && <HichkiButton api={roomApi} awayName={away} people={feed.awayPeople ?? []} />}
           {room.accepted && (
             <p className="banner celebrate" role="status">
               {away} picked {room.accepted.memberId === member.id ? 'yours' : `${room.accepted.memberName}\u2019s`}. +10
@@ -215,11 +229,7 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
           {feed.flags.jab_kholna &&
             letters.filter((r) => r.status !== 'unlocked').map((r) => <LetterCard key={r.id} letter={r} proofs={proofsFor(r)} api={roomApi} away={away} me={member.id} />)}
 
-          <ActivityStrip feed={feed} me={member.id} />
-
-          <button type="button" className="btn btn-quiet see-moments" onClick={() => setTab('moments')}>
-            See every voice, letter and story
-          </button>
+          <ActivityStrip feed={feed} me={member.id} onMore={() => setTab('moments')} />
         </>
       )}
 
@@ -265,18 +275,19 @@ function RequestCard({
   me: string;
   nominee?: string;
 }) {
+  const asker = request.askedByName ?? away;
   const send = useSend(roomApi, request.id);
   const mine = proofs.filter((p) => p.memberId === me).length;
   const [filming, setFilming] = useState(false);
 
   if (request.kind === 'story') {
-    return <StoryRequestCard request={request} proofs={proofs} api={roomApi} away={away} me={me} />;
+    return <StoryRequestCard request={request} proofs={proofs} api={roomApi} away={asker} me={me} />;
   }
 
   return (
     <article className={`card request-card kind-${request.kind}`}>
       <p className="eyebrow">
-        {request.kind === 'see' ? `${away} wants to see` : `${away} asks, on their behalf`}
+        {request.kind === 'see' ? `${asker} wants to see` : `${asker} asks, on their behalf`}
         {request.nomineeId === me ? ' · asked for you by name' : nominee ? ` · asked ${nominee}` : ''}
       </p>
       <p className="request-text">
@@ -287,7 +298,7 @@ function RequestCard({
           {request.textOriginal}
         </p>
       )}
-      <HearAsk request={request} away={away} />
+      <HearAsk request={request} away={asker} />
 
       <div className="actions">
         <PhotoButton onPick={send.photo} disabled={send.busy}>
@@ -332,7 +343,7 @@ function RequestCard({
       <p className="muted small">
         {proofs.length === 0
           ? 'Nobody has sent anything yet. Be the first.'
-          : `${proofs.length} sent so far${mine ? `, ${mine} from you` : ''}. ${away} picks one.`}
+          : `${proofs.length} sent so far${mine ? `, ${mine} from you` : ''}. ${asker} picks one.`}
         {request.until ? ` Open until ${clock(request.until)}.` : ''}
       </p>
     </article>
@@ -341,12 +352,13 @@ function RequestCard({
 
 // Jab kholna: a voice letter that stays locked until the room shows its moment happened.
 function LetterCard({ letter, proofs, api: roomApi, away, me }: { letter: Req; proofs: Proof[]; api: RoomApi; away: string; me: string }) {
+  const asker = letter.askedByName ?? away;
   const send = useSend(roomApi, letter.id);
 
   if (letter.status === 'unlocked') {
     return (
       <article className="card letter-card is-open">
-        <p className="eyebrow">A letter from {away}{letter.openWhen ? ` · for when ${letter.openWhen}` : ''}</p>
+        <p className="eyebrow">A letter from {asker}{letter.openWhen ? ` · for when ${letter.openWhen}` : ''}</p>
         {letter.audioUrl && <audio src={letter.audioUrl} controls preload="none" />}
         {(letter.transcript || letter.text) && (
           <p className="request-text">
@@ -360,7 +372,7 @@ function LetterCard({ letter, proofs, api: roomApi, away, me }: { letter: Req; p
   const sent = proofs.some((p) => p.memberId === me);
   return (
     <article className="card letter-card is-locked">
-      <p className="eyebrow">A sealed letter from {away}</p>
+      <p className="eyebrow">A sealed letter from {asker}</p>
       <p className="request-text">
         {letter.openWhen ? `Open when ${letter.openWhen}` : letter.unlockAt ? `Opens at ${clock(letter.unlockAt)}` : 'Opens soon'}
       </p>
@@ -372,7 +384,7 @@ function LetterCard({ letter, proofs, api: roomApi, away, me }: { letter: Req; p
             </PhotoButton>
           </div>
           <p className="muted small">
-            {sent ? `Sent. It opens when ${away} sees it.` : `${away} opens it for the room when they see the moment.`}
+            {sent ? `Sent. It opens when ${asker} sees it.` : `${asker} opens it for the room when they see the moment.`}
             {letter.unlockAt ? ` Otherwise it opens at ${clock(letter.unlockAt)}.` : ''}
           </p>
         </>
@@ -627,36 +639,24 @@ function Welcome({
   );
 }
 
-// Hichki back: the away person thought of you, by name.
+// Hichki back: the away person thought of you, by name. The whole screen stops for it.
 export function HichkiBack({ moment }: { moment: Hichki | null }) {
-  const [show, setShow] = useState<Hichki | null>(null);
-  useEffect(() => {
-    if (!moment) return;
-    setShow(moment);
-    navigator.vibrate?.([120, 80, 120]);
-    const t = window.setTimeout(() => setShow(null), 7000);
-    return () => window.clearTimeout(t);
-  }, [moment]);
-  if (!show) return null;
   return (
-    <div className="hichki-toast" role="status" key={show.at}>
-      <span className="hichki-art" aria-hidden="true" />
-      <div>
-        <p className="hichki-line" lang={rememberedLine(show.from).lang}>
-          {rememberedLine(show.from).text}
-        </p>
-        <p className="muted">
-          {show.toAll ? `${show.from} is thinking of you all` : `${show.from} thought of you, just now`}
-          {show.note ? <>, <em>{show.note}</em></> : null}
-        </p>
-      </div>
-    </div>
+    <HichkiArrival moment={moment} line={rememberedLine(moment?.from)}>
+      {moment && (
+        <>
+          {moment.toAll ? `${moment.from} is thinking of you all` : `${moment.from} thought of you, just now`}
+          {moment.note ? <>, <em>{moment.note}</em></> : null}
+        </>
+      )}
+    </HichkiArrival>
   );
 }
 
 // Dadi ki kahani, asked for: the away person wants someone to tell a story.
 // Answer by recording it; it's written down and translated for everyone.
 function StoryRequestCard({ request, proofs, api: roomApi, away, me }: { request: Req; proofs: Proof[]; api: RoomApi; away: string; me: string }) {
+  const asker = request.askedByName ?? away;
   const [teller, setTeller] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -687,7 +687,7 @@ function StoryRequestCard({ request, proofs, api: roomApi, away, me }: { request
 
   return (
     <article className="card request-card kind-story">
-      <p className="eyebrow">{away} asks for a story</p>
+      <p className="eyebrow">{asker} asks for a story</p>
       <p className="request-text">
         <T text={request.text} />
       </p>
@@ -696,7 +696,7 @@ function StoryRequestCard({ request, proofs, api: roomApi, away, me }: { request
           {request.textOriginal}
         </p>
       )}
-      <HearAsk request={request} away={away} />
+      <HearAsk request={request} away={asker} />
       <label className="field">
         <span>Who is telling it?</span>
         <input value={teller} onChange={(e) => { setTeller(e.target.value); setError(''); }} placeholder="Dadi" maxLength={40} />
@@ -724,7 +724,7 @@ function StoryRequestCard({ request, proofs, api: roomApi, away, me }: { request
         </p>
       )}
       <p className="muted small">
-        {proofs.length === 0 ? 'Hand the phone to whoever is telling it. Any language works.' : `${proofs.length} told so far${mine ? `, ${mine} from you` : ''}. ${away} picks one.`}
+        {proofs.length === 0 ? 'Hand the phone to whoever is telling it. Any language works.' : `${proofs.length} told so far${mine ? `, ${mine} from you` : ''}. ${asker} picks one.`}
       </p>
     </article>
   );
@@ -732,10 +732,11 @@ function StoryRequestCard({ request, proofs, api: roomApi, away, me }: { request
 
 // Hear Meera ask: her own voice, when she spoke the request.
 function HearAsk({ request, away }: { request: Req; away: string }) {
+  const asker = request.askedByName ?? away;
   if (!request.audioUrl) return null;
   return (
     <div className="hear-ask">
-      <p className="eyebrow">Hear {away} ask</p>
+      <p className="eyebrow">Hear {asker} ask</p>
       <audio src={request.audioUrl} controls preload="none" />
     </div>
   );

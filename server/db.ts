@@ -134,6 +134,120 @@ for (const [column, type] of [
   if (!gatheringColumns.some((c) => c.name === column)) db.exec(`ALTER TABLE gatherings ADD COLUMN ${column} ${type}`);
 }
 
+// More than one person can be away. The first (the "main" one) lives on the
+// gathering itself; everyone else who couldn't come is a row here, with their own
+// private link, reason, timezone, duty and last visit.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS away_people (
+    id           TEXT PRIMARY KEY,
+    gathering_id TEXT NOT NULL REFERENCES gatherings(id),
+    name         TEXT NOT NULL,
+    token        TEXT NOT NULL,
+    reason       TEXT,
+    tz           TEXT,
+    duty_from    INTEGER,
+    duty_until   INTEGER,
+    duty_note    TEXT,
+    seen_at      INTEGER,
+    created_at   INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS away_people_by_gathering ON away_people (gathering_id, created_at);
+`);
+
+// Who asked (null = the main away person), and who a hichki was for (null = main,
+// 'all' = everyone away, or an away person's id).
+const requestColumns = db.prepare('PRAGMA table_info(requests)').all() as { name: string }[];
+for (const [column, type] of [['asked_by', 'TEXT'], ['asked_by_name', 'TEXT']] as const) {
+  if (!requestColumns.some((c) => c.name === column)) db.exec(`ALTER TABLE requests ADD COLUMN ${column} ${type}`);
+}
+const hichkiCols = db.prepare('PRAGMA table_info(hichkis)').all() as { name: string }[];
+if (!hichkiCols.some((c) => c.name === 'to_away')) db.exec('ALTER TABLE hichkis ADD COLUMN to_away TEXT');
+
+export type Away = {
+  id: string; // 'main' for the gathering's own away person
+  name: string;
+  token: string;
+  reason: string | null;
+  tz: string | null;
+  duty_from: number | null;
+  duty_until: number | null;
+  duty_note: string | null;
+  seen_at: number | null;
+};
+
+type AwayRow = Away & { gathering_id: string; created_at: number };
+
+function mainAway(g: Gathering): Away {
+  return {
+    id: 'main',
+    name: g.away_name,
+    token: g.away_token,
+    reason: g.away_reason ?? null,
+    tz: g.away_tz ?? null,
+    duty_from: g.duty_from ?? null,
+    duty_until: g.duty_until ?? null,
+    duty_note: g.duty_note ?? null,
+    seen_at: g.away_seen_at ?? null,
+  };
+}
+
+// Everyone who couldn't come: the main person first, then the rest in order added.
+export function awayPeople(g: Gathering): Away[] {
+  const others = db.prepare('SELECT * FROM away_people WHERE gathering_id = ? ORDER BY created_at ASC').all(g.id) as AwayRow[];
+  return [mainAway(g), ...others];
+}
+
+export function awayByToken(g: Gathering, token: string): Away | undefined {
+  if (token === g.away_token) return mainAway(g);
+  return db.prepare('SELECT * FROM away_people WHERE gathering_id = ? AND token = ?').get(g.id, token) as AwayRow | undefined;
+}
+
+export function awayById(g: Gathering, id: string | null | undefined): Away | undefined {
+  if (!id || id === 'main') return mainAway(g);
+  return db.prepare('SELECT * FROM away_people WHERE gathering_id = ? AND id = ?').get(g.id, id) as AwayRow | undefined;
+}
+
+export function addAwayPerson(gatheringId: string, name: string, reason: string | null): Away {
+  const row: AwayRow = {
+    id: secret().slice(0, 12),
+    gathering_id: gatheringId,
+    name,
+    token: secret(),
+    reason,
+    tz: null,
+    duty_from: null,
+    duty_until: null,
+    duty_note: null,
+    seen_at: null,
+    created_at: Date.now(),
+  };
+  db.prepare('INSERT INTO away_people (id, gathering_id, name, token, reason, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(
+    row.id, row.gathering_id, row.name, row.token, row.reason, row.created_at,
+  );
+  return row;
+}
+
+export function onDutyAway(a: Away, now = Date.now()): boolean {
+  return !!a.duty_until && !!a.duty_from && a.duty_from <= now && now < a.duty_until;
+}
+
+// Duty, timezone and last visit, for whichever away person.
+export function setAwayDuty(g: Gathering, awayId: string, until: number | null, note: string | null) {
+  if (awayId === 'main') return setDuty(g.id, until, note);
+  if (until) db.prepare('UPDATE away_people SET duty_from = ?, duty_until = ?, duty_note = ? WHERE id = ?').run(Date.now(), until, note, awayId);
+  else db.prepare('UPDATE away_people SET duty_until = ? WHERE id = ?').run(Date.now(), awayId);
+}
+
+export function markSeen(g: Gathering, awayId: string, at = Date.now()) {
+  if (awayId === 'main') return markAwaySeen(g.id, at);
+  db.prepare('UPDATE away_people SET seen_at = ?, duty_from = CASE WHEN duty_until <= ? THEN NULL ELSE duty_from END WHERE id = ?').run(at, at, awayId);
+}
+
+export function setTzFor(g: Gathering, awayId: string, tz: string) {
+  if (awayId === 'main') return setAwayTz(g.id, tz);
+  db.prepare('UPDATE away_people SET tz = ? WHERE id = ?').run(tz, awayId);
+}
+
 // Translations, cached: each text is translated once per language.
 db.exec(`
   CREATE TABLE IF NOT EXISTS translations (
@@ -432,13 +546,15 @@ export type RequestRow = {
   accepted_proof_id: string | null;
   fulfilled_at: number | null;
   created_at: number;
+  asked_by?: string | null;
+  asked_by_name?: string | null;
 };
 
 export type NewRequest = Pick<RequestRow, 'gathering_id' | 'kind' | 'text' | 'live_at'> &
   Partial<
     Pick<
       RequestRow,
-      'text_original' | 'language' | 'audio_file' | 'transcript' | 'open_when' | 'nominee_id' | 'until' | 'unlock_at'
+      'text_original' | 'language' | 'audio_file' | 'transcript' | 'open_when' | 'nominee_id' | 'until' | 'unlock_at' | 'asked_by' | 'asked_by_name'
     >
   >;
 
@@ -467,12 +583,13 @@ export function createRequest(r: NewRequest): RequestRow {
   };
   db.prepare(
     `INSERT INTO requests (id, gathering_id, kind, text, text_original, language, audio_file, transcript,
-       open_when, nominee_id, status, live_at, until, unlock_at, accepted_proof_id, fulfilled_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       open_when, nominee_id, status, live_at, until, unlock_at, accepted_proof_id, fulfilled_at, created_at,
+       asked_by, asked_by_name)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     row.id, row.gathering_id, row.kind, row.text, row.text_original, row.language, row.audio_file, row.transcript,
     row.open_when, row.nominee_id, row.status, row.live_at, row.until, row.unlock_at, row.accepted_proof_id,
-    row.fulfilled_at, row.created_at,
+    row.fulfilled_at, row.created_at, row.asked_by ?? null, row.asked_by_name ?? null,
   );
   return row;
 }
@@ -643,15 +760,16 @@ export function listStories(gatheringId: string): StoryRow[] {
 // Hichkis
 // ---------------------------------------------------------------------------
 
-export type HichkiRow = { id: number; gathering_id: string; member_id: string | null; from_name: string; created_at: number; note: string | null };
+export type HichkiRow = { id: number; gathering_id: string; member_id: string | null; from_name: string; created_at: number; note: string | null; to_away?: string | null };
 
-export function addHichki(gatheringId: string, memberId: string | null, fromName: string, at = Date.now(), note: string | null = null) {
-  db.prepare('INSERT INTO hichkis (gathering_id, member_id, from_name, created_at, note) VALUES (?, ?, ?, ?, ?)').run(
+export function addHichki(gatheringId: string, memberId: string | null, fromName: string, at = Date.now(), note: string | null = null, toAway: string | null = null) {
+  db.prepare('INSERT INTO hichkis (gathering_id, member_id, from_name, created_at, note, to_away) VALUES (?, ?, ?, ?, ?, ?)').run(
     gatheringId,
     memberId,
     fromName,
     at,
     note,
+    toAway,
   );
 }
 

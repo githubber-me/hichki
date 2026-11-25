@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, saved } from '../api.ts';
 import { AWAY_REASONS, HICHKI_SCRIPT, ROOM_LANGS } from '../words.ts';
 import { READ_LANGUAGES } from '../lang.tsx';
@@ -15,6 +15,8 @@ export function Create() {
   const [roomLang, setRoomLangChoice] = useState('hi');
   const [readLang, setReadLang] = useState('');
   const [awayReason, setAwayReason] = useState('');
+  const [others, setOthers] = useState<{ name: string; reason: string }[]>([]);
+  const more = useRef<HTMLDetailsElement>(null);
   // The verified switch only appears when this server has sign-in set up.
   const [canVerify, setCanVerify] = useState(false);
   useEffect(() => {
@@ -29,7 +31,7 @@ export function Create() {
     }
     setBusy(true);
     try {
-      const { gathering, hostToken, awayToken } = await api.createGathering(name, occasion, awayName, verified, roomLang, { readLang, awayReason: awayReason || null });
+      const { gathering, hostToken, awayToken } = await api.createGathering(name, occasion, awayName, verified, roomLang, { readLang, awayReason: awayReason || null, others: others.filter((o) => o.name.trim()).map((o) => ({ name: o.name.trim(), reason: o.reason || null })) });
       saved.setHostToken(gathering.id, hostToken);
       saved.setAwayToken(gathering.id, awayToken);
       location.href = `/g/${gathering.id}/host?t=${hostToken}`;
@@ -60,9 +62,20 @@ export function Create() {
           <span>Who couldn&rsquo;t come?</span>
           <input value={awayName} onChange={(e) => setAwayName(e.target.value)} placeholder="Meera" maxLength={40} />
         </label>
+        <button
+          type="button"
+          className="link-quiet more-people-hint"
+          onClick={() => {
+            if (more.current) more.current.open = true;
+            if (others.length === 0) setOthers([{ name: '', reason: '' }]);
+            window.setTimeout(() => more.current?.querySelector<HTMLInputElement>('.other-row input')?.focus(), 50);
+          }}
+        >
+          More than one person can&rsquo;t make it? Add them in Additional settings.
+        </button>
 
         {/* Everything else is optional, and folded away. */}
-        <details className="more-settings">
+        <details className="more-settings" ref={more}>
           <summary>Additional settings</summary>
 
           <label className="field">
@@ -87,6 +100,37 @@ export function Create() {
             </select>
             <small className="muted">Nurses, doctors, soldiers and shift workers get Duty pe ready for them, and ideas made for their situation.</small>
           </label>
+
+          <div className="field others-field">
+            <span>Others who couldn&rsquo;t come</span>
+            {others.map((o, i) => (
+              <div key={i} className="other-row">
+                <input
+                  value={o.name}
+                  onChange={(e) => setOthers(others.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))}
+                  placeholder="Rahul"
+                  maxLength={40}
+                  aria-label="Their name"
+                />
+                <select
+                  value={o.reason}
+                  onChange={(e) => setOthers(others.map((x, k) => (k === i ? { ...x, reason: e.target.value } : x)))}
+                  aria-label="Why they can't come"
+                >
+                  {AWAY_REASONS.map(([code, label]) => (
+                    <option key={code} value={code}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+            <button type="button" className="btn btn-quiet btn-small" onClick={() => setOthers([...others, { name: '', reason: '' }])}>
+              Add another person
+            </button>
+            <small className="muted">Each one gets their own private link, on the host screen.</small>
+          </div>
+
 
           <label className="field">
             <span>Names of things in</span>

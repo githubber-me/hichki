@@ -91,7 +91,8 @@ export function Host({ id, token: urlToken }: { id: string; token: string }) {
       <DutyBanner gathering={room.feed?.gathering ?? gathering} />
       <HichkiBack moment={room.hichkiBack} />
 
-      {room.api && room.feed?.flags.hichki && <HichkiButton api={room.api} awayName={gathering.awayName} />}
+      {room.api && room.feed?.flags.hichki && <HichkiButton api={room.api} awayName={gathering.awayName} people={room.feed.awayPeople ?? []} />}
+      {room.api && room.feed && <OthersAway api={room.api} links={room.feed.awayLinks ?? []} online={room.feed.presence.awayOnlineIds ?? []} />}
       {room.feed && <HichkiTimeline entries={room.feed.hichkis ?? []} awayName={gathering.awayName} limit={3} />}
       {presence && <Leaderboard presence={presence} limit={5} />}
       {room.api && <VerifiedSwitch api={room.api} gathering={room.feed?.gathering ?? gathering} />}
@@ -264,6 +265,77 @@ function Settings({ api: roomApi, gathering }: { api: RoomApi; gathering: Public
         </select>
         <small className="muted">Translated for every phone, with the original one tap away.</small>
       </label>
+      {error && <p className="error">{error}</p>}
+    </details>
+  );
+}
+
+// Everyone else who couldn't come: each gets their own private link to share.
+function OthersAway({ api: roomApi, links, online }: { api: RoomApi; links: { id: string; name: string; token: string }[]; online: string[] }) {
+  const [name, setName] = useState('');
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState('');
+  const [base, setBase] = useState('');
+  useEffect(() => {
+    publicBaseUrl().then(setBase);
+  }, []);
+  const linkFor = (l: { token: string }) => `${base}${location.pathname.replace(/\/host$/, '')}/away?t=${l.token}`;
+
+  async function share(l: { id: string; name: string; token: string }) {
+    const url = linkFor(l);
+    const text = `Join from wherever you are, ${l.name}: ${url}`;
+    if (navigator.share) await navigator.share({ title: 'Hichki', text }).catch(() => {});
+    else {
+      await navigator.clipboard.writeText(url);
+      setCopied(l.id);
+    }
+  }
+
+  async function add() {
+    if (!name.trim()) return setError('Enter their name.');
+    setBusy(true);
+    setError('');
+    try {
+      await roomApi.addAwayPerson(name.trim(), reason || null);
+      setName('');
+      setReason('');
+    } catch (e) {
+      setError((e as Error).message);
+    }
+    setBusy(false);
+  }
+
+  return (
+    <details className="card more-settings away-people" open={links.length > 0}>
+      <summary>Others who couldn&rsquo;t come {links.length > 0 && <small className="muted">({links.length})</small>}</summary>
+      {links.map((l) => (
+        <div key={l.id} className="away-person">
+          <span className={`dot ${online.includes(l.id) ? 'on' : ''}`} aria-hidden="true" />
+          <span className="member-name">{l.name}</span>
+          <button type="button" className="btn btn-quiet btn-small" onClick={() => share(l)}>
+            {copied === l.id ? 'Link copied' : 'Share their link'}
+          </button>
+        </div>
+      ))}
+      <label className="field">
+        <span>Add someone</span>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Rahul" maxLength={40} />
+      </label>
+      <label className="field">
+        <span>Why can&rsquo;t they come?</span>
+        <select value={reason} onChange={(e) => setReason(e.target.value)}>
+          {AWAY_REASONS.map(([code, label]) => (
+            <option key={code} value={code}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button type="button" className="btn btn-primary" disabled={busy} onClick={add}>
+        {busy ? 'Adding\u2026' : 'Add, and get their link'}
+      </button>
       {error && <p className="error">{error}</p>}
     </details>
   );

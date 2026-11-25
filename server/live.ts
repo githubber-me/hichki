@@ -7,7 +7,7 @@
 
 import type { Socket } from 'socket.io';
 import { io, log } from './app.ts';
-import { getGathering, getMember, listMembers, markAwaySeen, type RequestRow } from './db.ts';
+import { awayByToken, getGathering, getMember, listMembers, markSeen, type RequestRow } from './db.ts';
 import { flags, onFlagsChange, onPacksChange } from './flags.ts';
 import { requestView } from './views.ts';
 
@@ -17,6 +17,8 @@ const awayOf = (gatheringId: string) => `g:${gatheringId}:away`;
 // Open sockets per gathering: member id -> count, and the away person's count.
 const online = new Map<string, Map<string, number>>();
 const awayOnline = new Map<string, number>();
+const awayOnlineById = new Map<string, Map<string, number>>();
+const awayPersonOf = (gatheringId: string, awayId: string) => `g:${gatheringId}:away:${awayId}`;
 
 export function presence(gatheringId: string) {
   const counts = online.get(gatheringId) ?? new Map<string, number>();
@@ -30,6 +32,8 @@ export function presence(gatheringId: string) {
       verified: !!m.auth_user_id,
     })),
     awayOnline: (awayOnline.get(gatheringId) ?? 0) > 0,
+    // Which away people have their page open right now ('main' or their id).
+    awayOnlineIds: [...(awayOnlineById.get(gatheringId) ?? new Map<string, number>()).entries()].filter(([, n]) => n > 0).map(([id]) => id),
   };
 }
 
@@ -61,6 +65,11 @@ export function emitAll(gatheringId: string, event: string, payload: unknown) {
 // Guests and the host only.
 export function emitRoom(gatheringId: string, event: string, payload: unknown) {
   io.to(roomOf(gatheringId)).emit(event, payload);
+}
+
+// One away person's open pages only.
+export function emitToAway(gatheringId: string, awayId: string, event: string, payload: unknown) {
+  io.to(awayPersonOf(gatheringId, awayId)).emit(event, payload);
 }
 
 export function emitAway(gatheringId: string, event: string, payload: unknown) {
@@ -109,6 +118,7 @@ io.on('connection', (socket: Socket) => {
   if (!g) return refuse('No gathering with that code.');
 
   let memberId: string | null = null;
+  let awayId: string | null = null;
 
   if (role === 'guest') {
     const member = getMember(String(auth.memberId ?? ''));
@@ -124,9 +134,15 @@ io.on('connection', (socket: Socket) => {
     if (auth.token !== g.host_token) return refuse('This link has expired.');
     socket.join(roomOf(g.id));
   } else if (role === 'away') {
-    if (auth.token !== g.away_token) return refuse('This link has expired.');
+    const person = awayByToken(g, String(auth.token ?? ''));
+    if (!person) return refuse('This link has expired.');
+    awayId = person.id;
     bump(awayOnline, g.id, 1);
+    const ids = awayOnlineById.get(g.id) ?? new Map<string, number>();
+    bump(ids, person.id, 1);
+    awayOnlineById.set(g.id, ids);
     socket.join(awayOf(g.id));
+    socket.join(awayPersonOf(g.id, person.id));
   } else {
     return refuse('Unknown role.');
   }
@@ -137,10 +153,12 @@ io.on('connection', (socket: Socket) => {
 
   socket.on('disconnect', () => {
     if (memberId) bump(online.get(g.id) ?? new Map(), memberId, -1);
-    if (role === 'away') {
+    if (role === 'away' && awayId) {
       bump(awayOnline, g.id, -1);
-      // Last time the away person was here, for "while you were away" on their next visit.
-      if ((awayOnline.get(g.id) ?? 0) === 0) markAwaySeen(g.id);
+      const ids = awayOnlineById.get(g.id) ?? new Map<string, number>();
+      bump(ids, awayId, -1);
+      // Last time this away person was here, for "while you were away" on their next visit.
+      if ((ids.get(awayId) ?? 0) === 0) markSeen(g, awayId);
     }
     broadcastPresence(g.id);
   });

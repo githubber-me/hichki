@@ -41,10 +41,6 @@ import {
   removeMember,
   updateProfile,
   setVerified,
-  onDuty,
-  setDuty,
-  markAwaySeen,
-  setAwayTz,
   setRoomLang,
   setSettings,
   setThanks,
@@ -52,13 +48,21 @@ import {
   setAside,
   listHichkisSince,
   recentHichkis,
+  awayPeople,
+  awayByToken,
+  addAwayPerson,
+  onDutyAway,
+  setAwayDuty,
+  markSeen,
+  setTzFor,
+  type Away,
   cachedTranslation,
   saveTranslation,
 } from './db.ts';
 import { isOwnFile, mediaOf, mediaUrl, saveUpload, UploadError } from './files.ts';
 import { flagStatus, flags, packs, requestMode, trackFulfilled } from './flags.ts';
 import { packFor } from './packs.ts';
-import { broadcastPresence, disconnectMember, emitAll, emitAway, emitRoom, emitSplit, emitToMember, onlineMemberIds, presence, publishRequest } from './live.ts';
+import { broadcastPresence, disconnectMember, emitAll, emitAway, emitRoom, emitSplit, emitToAway, emitToMember, onlineMemberIds, presence, publishRequest } from './live.ts';
 import { READ_LANGUAGES, sarvamEnabled, SarvamError, toCard, transcribe, translate, translateAuto } from './sarvam.ts';
 import { signedInGuest, signInEnabled, SignInError } from './auth.ts';
 import { config } from './config.ts';
@@ -66,6 +70,8 @@ import { gatheringView, proofView, requestView, storyView } from './views.ts';
 
 const POINTS_FOR_ACCEPTED_PROOF = 10;
 const HICHKI_COOLDOWN_MS = 3_000;
+// Buzzing every phone at the gathering is for once in a while, not every few seconds.
+const ROOM_HICHKI_COOLDOWN_MS = 10 * 60_000;
 const MAX_SCHEDULE_AHEAD_MS = 60 * 24 * 60 * 60 * 1000; // 60 days
 
 // ---------------------------------------------------------------------------
@@ -88,7 +94,7 @@ class HttpError extends Error {
 type Caller =
   | { role: 'guest'; gathering: Gathering; member: Member }
   | { role: 'host'; gathering: Gathering }
-  | { role: 'away'; gathering: Gathering };
+  | { role: 'away'; gathering: Gathering; away: Away };
 
 function findGathering(id: string): Gathering {
   const g = getGathering(String(id ?? '').toUpperCase());
@@ -98,7 +104,10 @@ function findGathering(id: string): Gathering {
 
 function caller(req: FastifyRequest, g: Gathering): Caller | null {
   const token = req.headers['x-hichki-token'];
-  if (token && token === g.away_token) return { role: 'away', gathering: g };
+  if (typeof token === 'string' && token !== g.host_token) {
+    const away = awayByToken(g, token);
+    if (away) return { role: 'away', gathering: g, away };
+  }
   if (token && token === g.host_token) return { role: 'host', gathering: g };
   const memberId = req.headers['x-hichki-member'];
   if (typeof memberId === 'string') {
@@ -106,6 +115,23 @@ function caller(req: FastifyRequest, g: Gathering): Caller | null {
     if (member && member.gathering_id === g.id && !member.removed_at) return { role: 'guest', gathering: g, member };
   }
   return null;
+}
+
+// The away person behind a request: only they act on their own requests.
+function awayCaller(req: FastifyRequest, g: Gathering): Away {
+  const c = requireCaller(req, g, 'away');
+  if (c.role !== 'away') throw new HttpError(403, 'Only the person who couldn\u2019t come can do that.');
+  return c.away;
+}
+
+function ownRequest(away: Away, r: RequestRow) {
+  if ((r.asked_by ?? 'main') !== away.id) throw new HttpError(403, 'That was someone else\u2019s request.');
+}
+
+// Everyone who couldn't come, for screens (never their private links).
+function awayView(a: Away) {
+  const duty = a.duty_until && a.duty_from && a.duty_until > Date.now() ? { from: a.duty_from, until: a.duty_until, note: a.duty_note } : null;
+  return { id: a.id, name: a.name, reason: a.reason, tz: a.tz, duty };
 }
 
 function requireCaller(req: FastifyRequest, g: Gathering, ...roles: Caller['role'][]): Caller {
@@ -194,6 +220,14 @@ app.post('/api/gatherings', async (req) => {
   if (verified && !signInEnabled) throw new HttpError(400, 'Verified guests need sign-in, which isn\u2019t set up on this server.');
 
   const g = createGathering(name, occasion, awayName, verified);
+  // Others who couldn't come, added from Additional settings.
+  const others = Array.isArray(body.others) ? body.others.slice(0, 11) : [];
+  for (const o of others) {
+    const oname = clean((o as Record<string, unknown>)?.name, 40);
+    const oreason = (o as Record<string, unknown>)?.reason;
+    if (oname) addAwayPerson(g.id, oname, typeof oreason === 'string' && AWAY_REASONS.includes(oreason) ? oreason : null);
+  }
+
   const settings = readSettings(body);
   if (Object.keys(settings).length) {
     setSettings(g.id, settings);
@@ -350,6 +384,21 @@ app.post('/api/gatherings/:id/room-lang', async (req) => {
   return { gathering: gatheringView(updated) };
 });
 
+// The host adds someone else who couldn't come. They get their own private link.
+app.post('/api/gatherings/:id/away-people', async (req) => {
+  const g = findGathering((req.params as { id: string }).id);
+  requireCaller(req, g, 'host');
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const name = clean(body.name, 40);
+  if (!name) throw new HttpError(400, 'Enter their name.');
+  if (awayPeople(g).length >= 12) throw new HttpError(400, 'That\u2019s a lot of people away. Twelve is the most for now.');
+  const reason = typeof body.reason === 'string' && AWAY_REASONS.includes(body.reason) ? body.reason : null;
+  const a = addAwayPerson(g.id, name, reason);
+  req.log.info({ event: 'away_person_added', gatheringId: g.id }, 'away person added');
+  emitAll(g.id, 'gathering', gatheringView(findGathering(g.id)));
+  return { person: awayView(a), token: a.token };
+});
+
 // The host turns verified guests on or off. People already in stay in.
 app.post('/api/gatherings/:id/verified', async (req) => {
   const g = findGathering((req.params as { id: string }).id);
@@ -384,7 +433,12 @@ app.get('/api/gatherings/:id/feed', async (req) => {
     // The hichki timeline, newest first: who remembered, when, and their line if any.
     hichkis: recentHichkis(g.id).map((h) => ({ from: h.from_name, memberId: h.member_id, note: h.note, at: h.created_at })),
     // "While you were away" for the away person (null when there's nothing to show).
-    catchUp: c.role === 'away' ? catchUp(g) : null,
+    catchUp: c.role === 'away' ? catchUp(g, c.away) : null,
+    // Everyone who couldn't come, and which one is looking (away only).
+    awayPeople: awayPeople(g).map(awayView),
+    awayMe: c.role === 'away' ? awayView(c.away) : null,
+    // The host shares the extra away people's private links.
+    awayLinks: c.role === 'host' ? awayPeople(g).slice(1).map((a) => ({ id: a.id, name: a.name, token: a.token })) : [],
     presence: presence(g.id),
     requests: listRequests(g.id)
       .map((r) => requestView(r, viewer))
@@ -444,7 +498,7 @@ app.post('/api/gatherings/:id/requests/draft', async (req) => {
 // Step 2: create a request or a letter. Typed requests skip the draft step.
 app.post('/api/gatherings/:id/requests', async (req) => {
   const g = findGathering((req.params as { id: string }).id);
-  requireCaller(req, g, 'away');
+  const asker = awayCaller(req, g);
   const body = (req.body ?? {}) as Record<string, unknown>;
 
   const kind = clean(body.kind, 10) as RequestKind;
@@ -486,7 +540,9 @@ app.post('/api/gatherings/:id/requests', async (req) => {
   const r = createRequest({
     gathering_id: g.id,
     kind,
-    text: text || (kind === 'letter' ? `A voice letter from ${g.away_name}` : ''),
+    text: text || (kind === 'letter' ? `A voice letter from ${asker.name}` : ''),
+    asked_by: asker.id === 'main' ? null : asker.id,
+    asked_by_name: asker.id === 'main' ? null : asker.name,
     text_original: clean(body.textOriginal, 200) || null,
     language: clean(body.language, 10) || null,
     transcript: clean(body.transcript, 2000) || null,
@@ -540,7 +596,7 @@ app.post('/api/proofs/:pid/love', async (req) => {
   const proof = getProof((req.params as { pid: string }).pid);
   if (!proof) throw new HttpError(404, 'That answer doesn\u2019t exist.');
   const { request, gathering } = findRequest(proof.request_id);
-  requireCaller(req, gathering, 'away');
+  ownRequest(awayCaller(req, gathering), request);
   const loved = ((req.body ?? {}) as Record<string, unknown>).loved !== false;
   if (loved === !!proof.loved_at) return { proof: proofView(proof, memberName(proof.member_id), 'away') };
 
@@ -549,7 +605,7 @@ app.post('/api/proofs/:pid/love', async (req) => {
   const updated = getProof(proof.id)!;
   req.log.info({ event: loved ? 'proof_loved' : 'proof_unloved', gatheringId: gathering.id }, 'love changed');
   publishProof(updated);
-  if (loved) await emitToMember(gathering.id, updated.member_id, 'loved', { from: gathering.away_name, proofId: proof.id, requestText: request.text, points: POINTS_FOR_LOVE });
+  if (loved) await emitToMember(gathering.id, updated.member_id, 'loved', { from: request.asked_by_name ?? gathering.away_name, proofId: proof.id, requestText: request.text, points: POINTS_FOR_LOVE });
   broadcastPresence(gathering.id);
   return { proof: proofView(updated, memberName(updated.member_id), 'away') };
 });
@@ -558,8 +614,8 @@ app.post('/api/proofs/:pid/love', async (req) => {
 app.post('/api/proofs/:pid/set-aside', async (req) => {
   const proof = getProof((req.params as { pid: string }).pid);
   if (!proof) throw new HttpError(404, 'That answer doesn\u2019t exist.');
-  const { gathering } = findRequest(proof.request_id);
-  requireCaller(req, gathering, 'away');
+  const { request: owned, gathering } = findRequest(proof.request_id);
+  ownRequest(awayCaller(req, gathering), owned);
   setAside(proof.id, ((req.body ?? {}) as Record<string, unknown>).aside !== false);
   const updated = getProof(proof.id)!;
   // Only the away person's own screens hear about it.
@@ -573,7 +629,7 @@ app.post('/api/proofs/:pid/thanks', async (req) => {
   const proof = getProof((req.params as { pid: string }).pid);
   if (!proof) throw new HttpError(404, 'That answer doesn\u2019t exist.');
   const { request, gathering } = findRequest(proof.request_id);
-  requireCaller(req, gathering, 'away');
+  ownRequest(awayCaller(req, gathering), request);
   if (request.accepted_proof_id !== proof.id) throw new HttpError(409, 'Pick this one first, then say thank you.');
 
   const body = (req.body ?? {}) as Record<string, unknown>;
@@ -589,14 +645,14 @@ app.post('/api/proofs/:pid/thanks', async (req) => {
   const view = proofView(updated, memberName(updated.member_id), 'away');
   req.log.info({ event: 'thanks_sent', gatheringId: gathering.id, media: file ? mediaOf(file) : 'text' }, 'thank-you sent');
   publishProof(updated);
-  await emitToMember(gathering.id, updated.member_id, 'thanks', { from: gathering.away_name, proofId: proof.id, requestText: request.text });
+  await emitToMember(gathering.id, updated.member_id, 'thanks', { from: request.asked_by_name ?? gathering.away_name, proofId: proof.id, requestText: request.text });
   return { proof: view };
 });
 
 // The away person withdraws a request or letter.
 app.delete('/api/requests/:rid', async (req) => {
   const { request, gathering } = findRequest((req.params as { rid: string }).rid);
-  requireCaller(req, gathering, 'away');
+  ownRequest(awayCaller(req, gathering), request);
   if (request.status === 'done' || request.status === 'unlocked') throw new HttpError(409, 'That one has already happened.');
   cancelRequest(request.id);
   const updated = getRequest(request.id)!;
@@ -652,7 +708,7 @@ app.post('/api/requests/:rid/proofs', async (req) => {
 // The away person picks the best proof. The sender gets points; a letter unlocks.
 app.post('/api/requests/:rid/accept', async (req) => {
   const { request, gathering } = findRequest((req.params as { rid: string }).rid);
-  requireCaller(req, gathering, 'away');
+  ownRequest(awayCaller(req, gathering), request);
   const body = (req.body ?? {}) as Record<string, unknown>;
 
   const proof = getProof(clean(body.proofId, 64));
@@ -702,13 +758,29 @@ app.post('/api/gatherings/:id/hichki', async (req) => {
 
   const from = c.role === 'guest' ? c.member.name : 'The host';
   // Optional: when it happened. "when Dadi started singing".
-  const note = clean(((req.body ?? {}) as Record<string, unknown>).note, 120) || null;
-  const payload = { from, memberId: c.role === 'guest' ? c.member.id : null, note, at: Date.now() };
-  addHichki(g.id, payload.memberId, from, payload.at, note);
-  // Duty pe: while the away person is on duty, hichkis are kept for later, not buzzed.
-  const held = onDuty(g);
-  req.log.info({ event: 'hichki', gatheringId: g.id, held }, 'hichki sent');
-  if (!held) emitAway(g.id, 'hichki', payload);
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const note = clean(body.note, 120) || null;
+  // Who it's for: one away person ('main' or their id), or 'all' of them.
+  const people = awayPeople(g);
+  const to = clean(body.to, 20) || 'main';
+  const targets = to === 'all' ? people : people.filter((a) => a.id === to);
+  if (targets.length === 0) throw new HttpError(404, 'That person isn\u2019t in this gathering.');
+  const payload = {
+    from,
+    memberId: c.role === 'guest' ? c.member.id : null,
+    note,
+    to: to === 'all' ? 'all' : targets[0].id,
+    toName: to === 'all' ? null : targets[0].name,
+    at: Date.now(),
+  };
+  addHichki(g.id, payload.memberId, from, payload.at, note, to === 'main' ? null : payload.to);
+  // Duty pe: anyone on duty has it kept for later instead of a buzz at work.
+  let held = false;
+  for (const a of targets) {
+    if (onDutyAway(a)) held = true;
+    else emitToAway(g.id, a.id, 'hichki', payload);
+  }
+  req.log.info({ event: 'hichki', gatheringId: g.id, to: payload.to, held }, 'hichki sent');
   emitAll(g.id, 'hichki:sent', { ...payload, held });
   return { ok: true };
 });
@@ -754,19 +826,25 @@ app.post('/api/gatherings/:id/translate', async (req) => {
 
 // Since when to catch the away person up: their last visit, or the start of
 // their last duty if that was earlier. Nothing while they're still on duty.
-function catchUp(g: Gathering) {
-  if (onDuty(g)) return null;
-  const marks = [g.away_seen_at, g.duty_from].filter((t): t is number => !!t);
+function catchUp(g: Gathering, a: Away) {
+  if (onDutyAway(a)) return null;
+  const marks = [a.seen_at, a.duty_from].filter((t): t is number => !!t);
   if (marks.length === 0) return null;
   const since = Math.min(...marks);
-  const hichkis = listHichkisSince(g.id, since).map((h) => ({ from: h.from_name, memberId: h.member_id, note: h.note, at: h.created_at }));
-  const answered = listRequests(g.id).filter((r) => (r.status === 'done' || r.status === 'unlocked') && (r.fulfilled_at ?? 0) > since);
+  // Hichkis meant for them: to them by name, to everyone, or (for the main person) unaddressed.
+  const mine = (h: { to_away?: string | null }) => h.to_away === 'all' || h.to_away === a.id || (a.id === 'main' && !h.to_away);
+  const hichkis = listHichkisSince(g.id, since)
+    .filter(mine)
+    .map((h) => ({ from: h.from_name, memberId: h.member_id, note: h.note, at: h.created_at }));
+  const answered = listRequests(g.id).filter(
+    (r) => (r.asked_by ?? 'main') === a.id && (r.status === 'done' || r.status === 'unlocked') && (r.fulfilled_at ?? 0) > since,
+  );
   const stories = listStories(g.id).filter((s) => s.created_at > since);
   if (hichkis.length === 0 && answered.length === 0 && stories.length === 0) return null;
   return {
     since,
-    wasOnDuty: !!g.duty_from && g.duty_from >= since - 1000,
-    dutyNote: g.duty_note,
+    wasOnDuty: !!a.duty_from && a.duty_from >= since - 1000,
+    dutyNote: a.duty_note,
     hichkis,
     answered: answered.map((r) => r.id),
     stories: stories.map((s) => s.id),
@@ -776,13 +854,13 @@ function catchUp(g: Gathering) {
 // The away person goes on duty until a time (with an optional note), or comes off duty.
 app.post('/api/gatherings/:id/duty', async (req) => {
   const g = findGathering((req.params as { id: string }).id);
-  requireCaller(req, g, 'away');
+  const me = awayCaller(req, g);
   const body = (req.body ?? {}) as Record<string, unknown>;
   const until = body.until === null ? null : parseTime(body.until, 'End of duty');
   if (until !== null && until <= Date.now()) throw new HttpError(400, 'Pick a time later than now.');
   if (until !== null && until > Date.now() + 3 * 24 * 60 * 60 * 1000) throw new HttpError(400, 'Duty can be set for up to three days at a time.');
 
-  setDuty(g.id, until, clean(body.note, 80) || null);
+  setAwayDuty(g, me.id, until, clean(body.note, 80) || null);
   const updated = findGathering(g.id);
   req.log.info({ event: until ? 'duty_on' : 'duty_off', gatheringId: g.id }, 'duty changed');
   emitAll(g.id, 'gathering', gatheringView(updated));
@@ -792,57 +870,60 @@ app.post('/api/gatherings/:id/duty', async (req) => {
 // The away person has seen the catch-up; next time, start from now.
 app.post('/api/gatherings/:id/seen', async (req) => {
   const g = findGathering((req.params as { id: string }).id);
-  requireCaller(req, g, 'away');
-  markAwaySeen(g.id);
+  markSeen(g, awayCaller(req, g).id);
   return { ok: true };
 });
 
 // The away person's phone tells us its timezone, so the room can see their clock.
 app.post('/api/gatherings/:id/away-tz', async (req) => {
   const g = findGathering((req.params as { id: string }).id);
-  requireCaller(req, g, 'away');
+  const me = awayCaller(req, g);
   const tz = clean(((req.body ?? {}) as Record<string, unknown>).tz, 64);
   try {
     new Intl.DateTimeFormat('en', { timeZone: tz });
   } catch {
     throw new HttpError(400, 'Unknown timezone.');
   }
-  if (tz && tz !== g.away_tz) {
-    setAwayTz(g.id, tz);
+  if (tz && tz !== me.tz) {
+    setTzFor(g, me.id, tz);
     emitAll(g.id, 'gathering', gatheringView(findGathering(g.id)));
   }
   return { ok: true };
 });
 
-// Hichki back: the away person remembers one particular guest.
 // The away person remembers everyone at once: every guest's and the host's phone
 // gets the moment. Same flag and cooldown as any hichki.
 app.post('/api/gatherings/:id/hichki-room', async (req) => {
   const g = findGathering((req.params as { id: string }).id);
-  requireCaller(req, g, 'away');
+  const me = awayCaller(req, g);
   if (!flags().hichki) throw new HttpError(409, 'Hichki is switched off right now.');
-  const key = `room:${g.id}`;
-  if (Date.now() - (lastHichki.get(key) ?? 0) < HICHKI_COOLDOWN_MS) throw new HttpError(429, 'Sent. Give it a moment before the next one.');
+  const key = `room:${g.id}:${me.id}`;
+  const since = Date.now() - (lastHichki.get(key) ?? 0);
+  if (since < ROOM_HICHKI_COOLDOWN_MS) {
+    const min = Math.ceil((ROOM_HICHKI_COOLDOWN_MS - since) / 60_000);
+    throw new HttpError(429, `Everyone got one a moment ago. Pick one person, or try everyone again in ${min} min.`);
+  }
   lastHichki.set(key, Date.now());
   const note = clean(((req.body ?? {}) as Record<string, unknown>).note, 120) || null;
   req.log.info({ event: 'hichki_room', gatheringId: g.id }, 'hichki to the room');
-  emitRoom(g.id, 'hichki:room', { from: g.away_name, note, at: Date.now() });
+  emitRoom(g.id, 'hichki:room', { from: me.name, note, at: Date.now() });
   return { ok: true };
 });
 
+// Hichki back: the away person remembers one particular guest.
 app.post('/api/gatherings/:id/hichki-back', async (req) => {
   const g = findGathering((req.params as { id: string }).id);
-  requireCaller(req, g, 'away');
+  const me = awayCaller(req, g);
   if (!flags().hichki) throw new HttpError(409, 'Hichki is switched off right now.');
   const member = getMember(clean(((req.body ?? {}) as Record<string, unknown>).memberId, 64));
   if (!member || member.gathering_id !== g.id || member.removed_at) throw new HttpError(404, 'That person isn\u2019t in this gathering.');
 
-  const key = `back:${g.id}:${member.id}`;
+  const key = `back:${g.id}:${me.id}:${member.id}`;
   if (Date.now() - (lastHichki.get(key) ?? 0) < HICHKI_COOLDOWN_MS) throw new HttpError(429, 'Sent. Give it a moment before the next one.');
   lastHichki.set(key, Date.now());
 
   req.log.info({ event: 'hichki_back', gatheringId: g.id }, 'hichki back');
-  await emitToMember(g.id, member.id, 'hichki:back', { from: g.away_name, at: Date.now() });
+  await emitToMember(g.id, member.id, 'hichki:back', { from: me.name, at: Date.now() });
   return { ok: true };
 });
 

@@ -13,10 +13,19 @@ export type PublicGathering = {
   awayReason: string | null; // why the away person can't come: nurse, soldier, visa...
   duty: { from: number; until: number; note: string | null } | null; // Duty pe
 };
+// Someone who couldn't come. 'main' is the gathering's own away person.
+export type AwayPerson = {
+  id: string;
+  name: string;
+  reason: string | null;
+  tz: string | null;
+  duty: { from: number; until: number; note: string | null } | null;
+};
 export type Member = { id: string; name: string; points: number; avatarUrl?: string | null; verified?: boolean };
 export type Presence = {
   members: (Member & { online: boolean })[];
   awayOnline: boolean;
+  awayOnlineIds?: string[]; // which away people have their page open
 };
 
 async function request<T>(path: string, body?: unknown, extraHeaders: Record<string, string> = {}): Promise<T> {
@@ -37,7 +46,7 @@ export const api = {
     awayName: string,
     verified = false,
     roomLang = 'hi',
-    more: { readLang?: string; awayReason?: string | null } = {},
+    more: { readLang?: string; awayReason?: string | null; others?: { name: string; reason: string | null }[] } = {},
   ) =>
     request<{ gathering: PublicGathering; hostToken: string; awayToken: string }>('/api/gatherings', {
       name,
@@ -77,6 +86,8 @@ export type Req = {
   transcript: string | null;
   openWhen: string | null;
   nomineeId: string | null;
+  askedBy: string; // 'main' or another away person's id
+  askedByName: string | null;
   liveAt: number;
   until: number | null;
   unlockAt: number | null;
@@ -137,6 +148,9 @@ export type Feed = {
   me: Member | null;
   flags: Flags;
   packs: PackItem[];
+  awayPeople: AwayPerson[]; // everyone who couldn't come, main first
+  awayMe: AwayPerson | null; // the away person looking (away only)
+  awayLinks: { id: string; name: string; token: string }[]; // host only
   requestMode: 'room' | 'nominee'; // Flagsmith experiment default (away person only)
   hichkis: HichkiEntry[]; // newest first
   // "While you were away" (away person only; null when there's nothing new).
@@ -225,7 +239,7 @@ export function roomApi(id: string, who: Who) {
     sendProof: (rid: string, file: string, caption?: string, extra: { teller?: string } = {}) =>
       call<{ proof: Proof }>('POST', `/api/requests/${rid}/proofs`, { file, caption, ...extra }),
     accept: (rid: string, proofId: string) => call<{ request: Req }>('POST', `/api/requests/${rid}/accept`, { proofId }),
-    hichki: (note?: string) => call<{ ok: true }>('POST', `${g}/hichki`, note ? { note } : {}),
+    hichki: (note?: string, to?: string) => call<{ ok: true }>('POST', `${g}/hichki`, { ...(note ? { note } : {}), ...(to ? { to } : {}) }),
     // The host says the celebration is over, or reopens it.
     wrap: (wrapped: boolean) => call<{ gathering: PublicGathering }>('POST', `${g}/wrap`, { wrapped }),
     // Guest only: change your name, or your photo (an uploaded file, or null to remove it).
@@ -243,6 +257,8 @@ export function roomApi(id: string, who: Who) {
     hichkiBack: (memberId: string) => call<{ ok: true }>('POST', `${g}/hichki-back`, { memberId }),
     // Host only.
     setRoomLang: (lang: string) => call<{ gathering: PublicGathering }>('POST', `${g}/room-lang`, { lang }),
+    addAwayPerson: (name: string, reason: string | null) =>
+      call<{ person: AwayPerson; token: string }>('POST', `${g}/away-people`, { name, reason }),
     settings: (s: { roomLang?: string; readLang?: string; awayReason?: string | null }) =>
       call<{ gathering: PublicGathering }>('POST', `${g}/settings`, s),
     removeMember: (memberId: string) => call<{ ok: true }>('DELETE', `${g}/members/${memberId}`),

@@ -62,8 +62,8 @@ export function useRoom(id: string, who: Who | null) {
     );
     socket.on('gathering', (gathering: PublicGathering) => {
       patch((f) => ({ ...f, gathering }));
-      // Duty ended or wrap-up changed: the away person's catch-up may have something new.
-      if (who.role === 'away') load();
+      // Duty, settings or the list of away people changed: fetch the whole picture again.
+      load();
     });
     socket.on('presence', (presence: Presence) =>
       patch((f) => {

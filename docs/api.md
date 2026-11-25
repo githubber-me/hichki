@@ -52,7 +52,8 @@ Times are epoch milliseconds. Requests accept either milliseconds or an ISO stri
 
 | Route | Who | Body | Returns |
 | --- | --- | --- | --- |
-| `POST /api/gatherings` | anyone | `{ name, occasion, awayName, verified? }` | `{ gathering, hostToken, awayToken }`. `verified: true` needs sign-in set up on the server. |
+| `POST /api/gatherings` | anyone | `{ name, occasion, awayName, verified?, others? }` | `{ gathering, hostToken, awayToken }`. `verified: true` needs sign-in set up on the server. `others` is `[{ name, reason? }]`: more people who couldn't come, each with their own link. |
+| `POST /api/gatherings/:id/away-people` | host | `{ name, reason? }` | `{ person, token }`. Adds another person who couldn't come (up to 12). Their private link is the away link with `t=token`. |
 | `GET /api/gatherings/:id` | anyone | | `{ gathering }` |
 | `POST /api/gatherings/:id/join` | anyone | `{ deviceId, name }` | `{ member }`. Same phone joining again returns the same member. |
 | `DELETE /api/gatherings/:id/members/:mid` | host | | `{ ok }`. Removes a guest: their open phones get `fatal` with `removed: true`, their link stops working, and they leave the lists. |
@@ -149,6 +150,8 @@ See and do requests can carry `audioFile` too (the away person's spoken request)
 
 `POST /api/gatherings/:id/hichki` (guest or host), optional body `{ note }` (up to 120 characters, e.g. "when Dadi started singing"). Returns `{ ok: true }`. The feed carries `hichkis`, the timeline newest first: `[{ from, memberId, note, at }]`, and `hichki` and `hichki:sent` events carry `note` and `memberId`.
 
+With more than one person away, add `to`: an away person's `id` (`'main'` for the first one), or `'all'`. Without it the hichki goes to the first person. The web page asks who it's for after the tap, so nobody buzzes everyone by accident.
+
 - 409 while the `hichki` flag is off.
 - 429 if the same person taps again within 3 seconds. The message can be shown as is.
 
@@ -242,8 +245,10 @@ Phones that were closed miss events. When a page becomes visible again, fetch th
 | `POST /api/gatherings/:id/duty` | away | `{ until, note? }`, or `{ until: null }` to come off duty | `{ gathering }`. Up to three days ahead. While on duty, hichkis are stored but not sent to the away person. |
 | `POST /api/gatherings/:id/seen` | away | | `{ ok }`. The away person has read the catch-up. |
 | `POST /api/gatherings/:id/away-tz` | away | `{ tz }` (IANA, e.g. `America/Toronto`) | `{ ok }`. Sent by the away person's phone, so the room can show their clock. |
-| `POST /api/gatherings/:id/hichki-room` | away | `{ note? }` | `{ ok }`. A hichki to everyone: guests' and the host's phones get `hichki:room` `{ from, note, at }`. |
+| `POST /api/gatherings/:id/hichki-room` | away | `{ note? }` | `{ ok }`. A hichki to everyone: guests' and the host's phones get `hichki:room` `{ from, note, at }`. Once every 10 minutes per away person (429 says how long is left), so it stays special. |
 | `POST /api/gatherings/:id/hichki-back` | away | `{ memberId }` | `{ ok }`. That guest's phones get `hichki:back` `{ from, at }`. Same 3 second cooldown per guest. |
+
+Every route here acts for the away person whose token is used. The feed carries `awayPeople` (`[{ id, name, reason, tz, duty }]`, the first one first), `awayMe` (the caller, for an away person), and for the host `awayLinks` (`[{ id, name, token }]`). Requests carry `askedBy` (an away person's `id`) and `askedByName`, and each away person sees and answers only their own. `presence.awayOnlineIds` lists who has their page open.
 
 `gathering` now carries `awayTz` and `duty` (`{ from, until, note }` while on duty, else `null`). The away person's feed carries `catchUp`: `{ since, wasOnDuty, dutyNote, hichkis, answered, stories }`, everything since their last visit or the start of their last duty, or `null` when there's nothing new or they're still on duty. `hichki:sent` carries `held: true` when the away person is on duty.
 

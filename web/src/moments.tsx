@@ -11,7 +11,6 @@ import { ThanksView } from './thanks.tsx';
 import { T } from './lang.tsx';
 
 const RECENT_MS = 15 * 60 * 1000;
-const HIGHLIGHTS = 6;
 
 type Activity = {
   at: number;
@@ -78,8 +77,9 @@ export function buildActivity(feed: Feed, me?: string): Activity[] {
   return out.sort((a, b) => b.at - a.at);
 }
 
-// Home: the last 15 minutes, or the highlights when it has been quiet.
-export function ActivityStrip({ feed, me }: { feed: Feed; me?: string }) {
+// Home: only the latest moment (or, after a quiet spell, the best one so far), and
+// a way through to the whole timeline in Moments, so the home page stays clear.
+export function ActivityStrip({ feed, me, onMore }: { feed: Feed; me?: string; onMore?: () => void }) {
   const [, tick] = useState(0);
   useEffect(() => {
     const t = window.setInterval(() => tick((n) => n + 1), 30_000);
@@ -89,49 +89,55 @@ export function ActivityStrip({ feed, me }: { feed: Feed; me?: string }) {
   const all = buildActivity(feed, me);
   if (all.length === 0) return null;
   const now = Date.now();
-  const recent = all.filter((a) => now - a.at < RECENT_MS).slice(0, 6);
+  const recent = all.find((a) => now - a.at < RECENT_MS);
+  const best = all.filter((a) => a.rank < 9).sort((a, b) => a.rank - b.rank || b.at - a.at)[0];
+  const shown = recent ?? best ?? all[0];
 
-  if (recent.length > 0) {
-    return (
-      <section className="activity">
-        <h2>
-          Just now <small>last 15 minutes</small>
-        </h2>
-        <ol>
-          {recent.map((a) => (
-            <li key={a.key}>
-              <p>
-                {a.text}
-                {a.note && <em> {a.note}</em>}
-              </p>
-              <time>{ago(a.at, now)}</time>
-            </li>
-          ))}
-        </ol>
-      </section>
-    );
-  }
-
-  const highlights = all
-    .filter((a) => a.rank < 9)
-    .sort((a, b) => a.rank - b.rank || b.at - a.at)
-    .slice(0, HIGHLIGHTS);
-  if (highlights.length === 0) return null;
   return (
-    <section className="activity is-highlights">
+    <section className={`activity ${recent ? '' : 'is-highlights'}`}>
       <h2>
-        Highlights so far <small>it&rsquo;s been quiet for a bit</small>
+        {recent ? 'Just now' : 'Highlight so far'} {!recent && <small>it&rsquo;s been quiet for a bit</small>}
       </h2>
       <ol>
-        {highlights.map((a) => (
-          <li key={a.key}>
-            {a.image && <img src={a.image} alt="" loading="lazy" />}
-            <p>
-              {a.text}
-              {a.note && <em> {a.note}</em>}
-            </p>
-            <time>{clock(a.at)}</time>
-          </li>
+        <ActivityItem a={shown} now={now} />
+      </ol>
+      {onMore && all.length > 1 && (
+        <button type="button" className="btn btn-quiet see-moments" onClick={onMore}>
+          See the whole timeline ({all.length})
+        </button>
+      )}
+    </section>
+  );
+}
+
+function ActivityItem({ a, now }: { a: Activity; now: number }) {
+  return (
+    <li>
+      {a.image && <img src={a.image} alt="" loading="lazy" />}
+      <p>
+        {a.text}
+        {a.note && (
+          <em>
+            {' '}
+            <T text={a.note} toggle={false} />
+          </em>
+        )}
+      </p>
+      <time>{now - a.at < RECENT_MS ? ago(a.at, now) : clock(a.at)}</time>
+    </li>
+  );
+}
+
+// Moments > Timeline: everything that happened, newest first.
+function Timeline({ feed, me }: { feed: Feed; me?: string }) {
+  const all = buildActivity(feed, me);
+  const now = Date.now();
+  if (all.length === 0) return <p className="muted empty">Nothing has happened yet. It all lands here, newest first.</p>;
+  return (
+    <section className="activity">
+      <ol>
+        {all.map((a) => (
+          <ActivityItem key={a.key} a={a} now={now} />
         ))}
       </ol>
     </section>
@@ -147,7 +153,7 @@ function ago(at: number, now: number) {
 // Moments: everything so far, by type.
 // ---------------------------------------------------------------------------
 
-type Kind = 'answered' | 'photos' | 'voices' | 'letters' | 'stories' | 'hichkis';
+type Kind = 'timeline' | 'answered' | 'photos' | 'voices' | 'letters' | 'stories' | 'hichkis';
 
 export function Moments({ feed, api, me, canRecord }: { feed: Feed; api: RoomApi; me?: string; canRecord: boolean }) {
   const away = feed.gathering.awayName;
@@ -157,6 +163,7 @@ export function Moments({ feed, api, me, canRecord }: { feed: Feed; api: RoomApi
   const voices = feed.proofs.filter((p) => p.media === 'audio' && reqById.get(p.requestId)?.kind !== 'story').sort((a, b) => b.createdAt - a.createdAt);
   const letters = feed.requests.filter((r) => r.kind === 'letter' && r.status === 'unlocked');
   const counts: Record<Kind, number> = {
+    timeline: 0,
     answered: answered.length,
     photos: photos.length,
     voices: voices.length,
@@ -164,8 +171,9 @@ export function Moments({ feed, api, me, canRecord }: { feed: Feed; api: RoomApi
     stories: feed.stories.length,
     hichkis: (feed.hichkis ?? []).length,
   };
-  const [kind, setKind] = useState<Kind>(() => (answered.length ? 'answered' : 'hichkis'));
+  const [kind, setKind] = useState<Kind>('timeline');
   const labels: [Kind, string][] = [
+    ['timeline', 'Timeline'],
     ['answered', 'Answered'],
     ['voices', 'Voices'],
     ['letters', 'Letters'],
@@ -186,6 +194,8 @@ export function Moments({ feed, api, me, canRecord }: { feed: Feed; api: RoomApi
           </button>
         ))}
       </div>
+
+      {kind === 'timeline' && <Timeline feed={feed} me={me} />}
 
       {kind === 'answered' &&
         (answered.length === 0 ? (
