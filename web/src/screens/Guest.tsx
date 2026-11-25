@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useState, type FormEvent } from 'react';
-import { api, saved, type Member, type Proof, type PublicGathering, type Req, type RoomApi } from '../api.ts';
+import { api, roomApi, saved, type Member, type Proof, type PublicGathering, type Req, type RoomApi } from '../api.ts';
 import { useRoom } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
 import { HichkiButton, Leaderboard, MicIcon, PhotoButton, ProofView, RecordButton, Stories, Tabs, clock, uploadPhoto, uploadRecording } from '../parts.tsx';
@@ -8,6 +8,8 @@ import { HichkiButton, Leaderboard, MicIcon, PhotoButton, ProofView, RecordButto
 export function Guest({ id }: { id: string }) {
   const [gathering, setGathering] = useState<PublicGathering | null>(null);
   const [member, setMember] = useState<Member | null>(() => saved.member(id));
+  // Right after joining, show people how everyone will see them before they go in.
+  const [welcoming, setWelcoming] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -16,7 +18,20 @@ export function Guest({ id }: { id: string }) {
 
   if (error) return <main className="screen"><p className="error">{error}</p></main>;
   if (!gathering) return <main className="screen"><p className="muted">Loading&hellip;</p></main>;
-  if (!member) return <Join gathering={gathering} onJoined={setMember} />;
+  if (!member) {
+    return (
+      <Join
+        gathering={gathering}
+        onJoined={(m) => {
+          setMember(m);
+          setWelcoming(true);
+        }}
+      />
+    );
+  }
+  if (welcoming) {
+    return <Welcome gathering={gathering} member={member} onChange={setMember} onDone={() => setWelcoming(false)} />;
+  }
   return <Room gathering={gathering} member={member} />;
 }
 
@@ -432,5 +447,116 @@ function Profile({ api: roomApi, gatheringId, me }: { api: RoomApi; gatheringId:
         </form>
       )}
     </section>
+  );
+}
+
+// "This is you": straight after joining, the guest sees the name and photo everyone
+// will see. Signed-in guests start with their account's name and photo. They can
+// continue as they are, or change either first.
+function Welcome({
+  gathering,
+  member,
+  onChange,
+  onDone,
+}: {
+  gathering: PublicGathering;
+  member: Member;
+  onChange: (m: Member) => void;
+  onDone: () => void;
+}) {
+  const roomApiForMe = roomApi(gathering.id, { role: 'guest', memberId: member.id });
+  const [name, setName] = useState(member.name);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function update(changes: { name?: string; photo?: string | null }) {
+    const { member: updated } = await roomApiForMe.updateMe(changes);
+    saved.setMember(gathering.id, updated);
+    onChange(updated);
+    return updated;
+  }
+
+  async function run(work: () => Promise<unknown>) {
+    setBusy(true);
+    setError('');
+    try {
+      await work();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+    setBusy(false);
+  }
+
+  async function pickPhoto(file: File | undefined) {
+    if (!file) return;
+    await run(async () => {
+      const stored = await uploadPhoto(roomApiForMe, file);
+      await update({ photo: stored.file });
+    });
+  }
+
+  async function continueIn(e: FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) return setError('Your name can\u2019t be empty.');
+    setBusy(true);
+    setError('');
+    try {
+      if (name.trim() !== member.name) await update({ name });
+      onDone();
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <main className="screen">
+      <header className="hero hero-join">
+        <p className="muted">You&rsquo;re in</p>
+        <h1>This is you at {gathering.name}</h1>
+        <p>It&rsquo;s how {gathering.awayName} and everyone else will see you. Change anything you like.</p>
+      </header>
+
+      <form className="card welcome" onSubmit={continueIn}>
+        <div className="welcome-photo">
+          {member.avatarUrl ? (
+            <img className="profile-photo welcome-big" src={member.avatarUrl} alt="Your photo" referrerPolicy="no-referrer" />
+          ) : (
+            <span className="profile-photo profile-initial welcome-big" aria-hidden="true">
+              {(name.trim() || member.name).slice(0, 1).toUpperCase()}
+            </span>
+          )}
+          <div className="profile-actions">
+            <label className="btn btn-quiet btn-small">
+              {member.avatarUrl ? 'Change photo' : 'Add a photo'}
+              <input type="file" accept="image/*" hidden disabled={busy} onChange={(e) => pickPhoto(e.target.files?.[0])} />
+            </label>
+            {member.avatarUrl && (
+              <button type="button" className="btn btn-quiet btn-small" disabled={busy} onClick={() => run(() => update({ photo: null }))}>
+                Remove photo
+              </button>
+            )}
+          </div>
+        </div>
+
+        <label className="field">
+          <span>Your name</span>
+          <input
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              setError('');
+            }}
+            maxLength={40}
+          />
+        </label>
+        {member.verified && <p className="badge badge-verified">verified</p>}
+
+        {error && <p className="error">{error}</p>}
+        <button className="btn btn-primary" disabled={busy}>
+          {busy ? 'One moment\u2026' : 'Continue'}
+        </button>
+      </form>
+    </main>
   );
 }
