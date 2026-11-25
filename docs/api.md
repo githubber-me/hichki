@@ -52,10 +52,20 @@ Times are epoch milliseconds. Requests accept either milliseconds or an ISO stri
 
 | Route | Who | Body | Returns |
 | --- | --- | --- | --- |
-| `POST /api/gatherings` | anyone | `{ name, occasion, awayName }` | `{ gathering, hostToken, awayToken }` |
+| `POST /api/gatherings` | anyone | `{ name, occasion, awayName, verified? }` | `{ gathering, hostToken, awayToken }`. `verified: true` needs sign-in set up on the server. |
 | `GET /api/gatherings/:id` | anyone | | `{ gathering }` |
 | `POST /api/gatherings/:id/join` | anyone | `{ deviceId, name }` | `{ member }`. Same phone joining again returns the same member. |
-| `GET /api/config` | anyone | | `{ publicBaseUrl, flags, sarvam }` |
+| `DELETE /api/gatherings/:id/members/:mid` | host | | `{ ok }`. Removes a guest: their open phones get `fatal` with `removed: true`, their link stops working, and they leave the lists. |
+| `POST /api/gatherings/:id/verified` | host | `{ verified }` | `{ gathering }`. Turns verified guests on or off; people already in stay in. |
+| `GET /api/config` | anyone | | `{ publicBaseUrl, flags, sarvam, signIn }`. `signIn` is `{ publishableKey }` when Clerk is set up, else `null`. |
+
+**Joining rules.**
+
+- Names are unique in a gathering (any letter case). A second "Arjun" from another phone gets 409 with a sentence suggesting a surname or initial.
+- A removed guest gets 403 if they try to join again from the same phone or account.
+- At most 20 joins a minute from one address (429).
+- **Verified gatherings** (`gathering.verified`): the guest signs in with Clerk (Google or phone) and sends `Authorization: Bearer <Clerk session token>` with `{ deviceId }`. The server checks the token and takes the name and photo from the account; a typed `name` is ignored. One account is one member, on any phone. Without a valid token: 401.
+- Members carry `avatarUrl` and `verified` (signed in) in `presence`.
 
 ## Uploads
 

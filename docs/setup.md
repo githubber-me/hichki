@@ -14,7 +14,9 @@ cp .env.example .env.local
 
 Fill in `SARVAM_API_KEY` and `FLAGSMITH_SERVER_SIDE_ENVIRONMENT_KEY`. In Flagsmith, create three flags, all switched on: `hichki`, `jab_kholna` and `ai_requests`.
 
-Without keys, the app still runs: requests are typed instead of spoken, and every flag is on.
+Optional: to let hosts ask for verified guests, add `CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`. Create an application in Clerk with Google (and phone number, if you like) turned on. A development instance needs no Google Cloud setup.
+
+Without keys, the app still runs: requests are typed instead of spoken, every flag is on, and guests always join by typing a name.
 
 ## 2. Run on your laptop
 
