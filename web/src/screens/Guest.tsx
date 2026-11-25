@@ -112,8 +112,12 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
 
           {asks.length === 0 && letters.length === 0 && (
             <section className="card empty">
-              <h2>{away} hasn&rsquo;t asked for anything yet</h2>
-              <p className="muted">When they do, it shows up here on every phone. Until then, send a hichki.</p>
+              <h2>{earlier.length ? 'Nothing is waiting right now' : `${away} hasn’t asked for anything yet`}</h2>
+              <p className="muted">
+                {earlier.length
+                  ? `When ${away} asks again, it shows up here on every phone. Until then, send a hichki.`
+                  : 'When they do, it shows up here on every phone. Until then, send a hichki.'}
+              </p>
             </section>
           )}
 
