@@ -185,13 +185,27 @@ export function roomApi(id: string, who: Who) {
   return {
     feed: () => call<Feed>('GET', `${g}/feed`),
     // Upload first, then hand the returned `file` to whatever uses it.
+    // Venue Wi-Fi drops out: a failed upload is tried once more on its own before
+    // giving up. Mistakes like a wrong file type (4xx) are not retried.
     upload: async (blob: Blob, filename: string): Promise<Stored> => {
-      const form = new FormData();
-      form.append('file', blob, filename);
-      const res = await fetch(`${g}/uploads`, { method: 'POST', headers: auth, body: form });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new ApiError(data.error ?? 'That didn’t upload. Try again.', res.status);
-      return data as Stored;
+      for (let attempt = 1; ; attempt++) {
+        const form = new FormData();
+        form.append('file', blob, filename);
+        let res: Response | null = null;
+        try {
+          res = await fetch(`${g}/uploads`, { method: 'POST', headers: auth, body: form });
+        } catch {
+          // network error: fall through to retry
+        }
+        const data = res ? await res.json().catch(() => ({})) : {};
+        if (res?.ok) return data as Stored;
+        const retryable = !res || res.status >= 500;
+        if (attempt < 2 && retryable) {
+          await new Promise((r) => setTimeout(r, 1500));
+          continue;
+        }
+        throw new ApiError(data.error ?? 'That didn\u2019t upload. Check your connection and try again.', res?.status ?? 0);
+      }
     },
     draft: (file: string) => call<Draft>('POST', `${g}/requests/draft`, { file }),
     createRequest: (body: NewRequest) => call<{ request: Req }>('POST', `${g}/requests`, body),

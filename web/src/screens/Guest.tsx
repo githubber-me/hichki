@@ -314,7 +314,16 @@ function RequestCard({
           }}
         />
       )}
-      {send.error && <p className="error">{send.error}</p>}
+      {send.error && (
+        <p className="error retry">
+          {send.error}
+          {send.retry && (
+            <button type="button" className="btn btn-quiet btn-small" disabled={send.busy} onClick={send.retry}>
+              Try again
+            </button>
+          )}
+        </p>
+      )}
 
       <p className="muted small">
         {proofs.length === 0
@@ -364,7 +373,16 @@ function LetterCard({ letter, proofs, api: roomApi, away, me }: { letter: Req; p
           </p>
         </>
       )}
-      {send.error && <p className="error">{send.error}</p>}
+      {send.error && (
+        <p className="error retry">
+          {send.error}
+          {send.retry && (
+            <button type="button" className="btn btn-quiet btn-small" disabled={send.busy} onClick={send.retry}>
+              Try again
+            </button>
+          )}
+        </p>
+      )}
     </article>
   );
 }
@@ -374,12 +392,17 @@ function useSend(roomApi: RoomApi, requestId: string) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
+  // The last thing they tried to send, kept so "Try again" doesn't mean re-shooting it.
+  const [last, setLast] = useState<(() => Promise<{ file: string }>) | null>(null);
+
   async function run(upload: () => Promise<{ file: string }>) {
     setBusy(true);
     setError('');
+    setLast(() => upload);
     try {
       const up = await upload();
       await roomApi.sendProof(requestId, up.file);
+      setLast(null);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -389,6 +412,7 @@ function useSend(roomApi: RoomApi, requestId: string) {
   return {
     busy,
     error,
+    retry: last ? () => run(last) : null,
     photo: (file: File) => run(() => uploadPhoto(roomApi, file)),
     voice: (blob: Blob) => run(() => uploadRecording(roomApi, blob)),
     // A short video, recorded in the page (up to 20 seconds, kept small).
@@ -644,9 +668,13 @@ function StoryRequestCard({ request, proofs, api: roomApi, away, me }: { request
   const [error, setError] = useState('');
   const mine = proofs.filter((p) => p.memberId === me).length;
 
+  // Kept if sending fails, so Dadi doesn't have to tell it again.
+  const [unsent, setUnsent] = useState<Blob | null>(null);
+
   async function send(blob: Blob) {
     if (!teller.trim()) {
-      setError('Say who is telling the story first.');
+      setUnsent(blob);
+      setError('Say who is telling the story, then send it.');
       return;
     }
     setBusy(true);
@@ -655,7 +683,9 @@ function StoryRequestCard({ request, proofs, api: roomApi, away, me }: { request
       const up = await uploadRecording(roomApi, blob);
       await roomApi.sendProof(request.id, up.file, undefined, { teller: teller.trim() });
       setTeller('');
+      setUnsent(null);
     } catch (e) {
+      setUnsent(blob);
       setError((e as Error).message);
     }
     setBusy(false);
@@ -689,7 +719,16 @@ function StoryRequestCard({ request, proofs, api: roomApi, away, me }: { request
           }
         />
       </div>
-      {error && <p className="error">{error}</p>}
+      {error && (
+        <p className="error retry">
+          {error}
+          {unsent && (
+            <button type="button" className="btn btn-quiet btn-small" disabled={busy} onClick={() => send(unsent)}>
+              {teller.trim() ? 'Send it' : 'Try again'}
+            </button>
+          )}
+        </p>
+      )}
       <p className="muted small">
         {proofs.length === 0 ? 'Hand the phone to whoever is telling it. Any language works.' : `${proofs.length} told so far${mine ? `, ${mine} from you` : ''}. ${away} picks one.`}
       </p>

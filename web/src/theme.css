@@ -706,3 +706,4 @@ a.btn, a.banner { text-decoration: none; }
 .photo-grid li.is-loved .proof-media { box-shadow: 0 0 0 2px var(--haldi); }
 .thanks-video.is-mirrored { transform: scaleX(-1); }
 .nominee-picker { display: grid; gap: 8px; }
+.retry { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
