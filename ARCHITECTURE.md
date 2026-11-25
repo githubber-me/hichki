@@ -74,7 +74,8 @@ Weddings and festivals run over several days, so a gathering never expires on it
 3. The card is broadcast to every guest in the gathering.
 4. Guests upload a photo or voice note as proof.
 5. The away person accepts one. That guest gets points and the leaderboard updates.
-6. A voice letter is the same kind of request with a locked recording attached. Accepting proof unlocks it and it plays for the room.
+6. The away person can thank them: a line of text, a voice note, or a short selfie video recorded in the page (front camera, up to 20 seconds, kept small for phone connections). The sender's phone hears about it at once.
+7. A voice letter is the same kind of request with a locked recording attached. Accepting proof unlocks it and it plays for the room.
 
 If `ai_requests` is switched off, or Sarvam fails, the away person types the request instead.
 

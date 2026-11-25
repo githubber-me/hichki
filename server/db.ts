@@ -128,6 +128,16 @@ for (const [column, type] of [
   if (!gatheringColumns.some((c) => c.name === column)) db.exec(`ALTER TABLE gatherings ADD COLUMN ${column} ${type}`);
 }
 
+// A thank-you from the away person on the proof they picked: text, or a voice or video note.
+const proofColumns = db.prepare('PRAGMA table_info(proofs)').all() as { name: string }[];
+for (const [column, type] of [
+  ['thanks_text', 'TEXT'],
+  ['thanks_file', 'TEXT'],
+  ['thanks_at', 'INTEGER'],
+] as const) {
+  if (!proofColumns.some((c) => c.name === column)) db.exec(`ALTER TABLE proofs ADD COLUMN ${column} ${type}`);
+}
+
 // Members who signed in carry their sign-in account and photo. removed_at is set
 // when the host removes someone; their link stops working and they leave the lists.
 const memberColumns = db.prepare('PRAGMA table_info(members)').all() as { name: string }[];
@@ -473,7 +483,14 @@ export type ProofRow = {
   media: 'photo' | 'audio' | 'video';
   caption: string | null;
   created_at: number;
+  thanks_text?: string | null;
+  thanks_file?: string | null;
+  thanks_at?: number | null;
 };
+
+export function setThanks(proofId: string, text: string | null, file: string | null) {
+  db.prepare('UPDATE proofs SET thanks_text = ?, thanks_file = ?, thanks_at = ? WHERE id = ?').run(text, file, Date.now(), proofId);
+}
 
 export function createProof(p: Omit<ProofRow, 'id' | 'created_at'>): ProofRow {
   const row: ProofRow = { ...p, id: secret(), created_at: Date.now() };

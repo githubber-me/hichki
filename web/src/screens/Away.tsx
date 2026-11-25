@@ -3,6 +3,7 @@ import { ApiError, saved, type Draft, type Feed, type Kind, type Proof, type Req
 import { useRoom, type Hichki } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
 import { CatchUpCard, DutyControl } from '../duty.tsx';
+import { ThanksComposer, ThanksView } from '../thanks.tsx';
 import { Yaadein } from './Yaadein.tsx';
 import { Leaderboard, MicIcon, ProofView, RecordButton, Stories, Tabs, ago, clock, uploadRecording } from '../parts.tsx';
 
@@ -358,6 +359,7 @@ function MyRequest({ request, proofs, api, now }: { request: Req; proofs: Proof[
         <>
           <ProofView proof={won} />
           <p className="muted small">From {won.memberName}.</p>
+          {won.thanks ? <ThanksView thanks={won.thanks} from="You" /> : <ThanksComposer api={api} proof={won} />}
         </>
       )}
       {error && <p className="error">{error}</p>}

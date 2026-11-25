@@ -44,6 +44,7 @@ import {
   setDuty,
   markAwaySeen,
   setAwayTz,
+  setThanks,
   listHichkisSince,
 } from './db.ts';
 import { isOwnFile, mediaOf, mediaUrl, saveUpload, UploadError } from './files.ts';
@@ -464,6 +465,32 @@ function pickNominee(gatheringId: string): string | null {
   candidates.sort((a, b) => a.points - b.points);
   return candidates[0].id;
 }
+
+// The away person thanks whoever sent the proof they picked: a line of text, or a
+// voice or video note (upload it first). The sender's phone hears about it at once.
+app.post('/api/proofs/:pid/thanks', async (req) => {
+  const proof = getProof((req.params as { pid: string }).pid);
+  if (!proof) throw new HttpError(404, 'That answer doesn\u2019t exist.');
+  const { request, gathering } = findRequest(proof.request_id);
+  requireCaller(req, gathering, 'away');
+  if (request.accepted_proof_id !== proof.id) throw new HttpError(409, 'Pick this one first, then say thank you.');
+
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const text = clean(body.text, 280) || null;
+  const file = body.file === undefined || body.file === null ? null : body.file;
+  if (file !== null && (!isOwnFile(gathering.id, file) || mediaOf(file) === 'photo')) {
+    throw new HttpError(400, 'Record a voice or video note, or write a line.');
+  }
+  if (!text && !file) throw new HttpError(400, 'Write a line, or record a voice or video note.');
+
+  setThanks(proof.id, text, file);
+  const updated = getProof(proof.id)!;
+  const view = proofView(updated, memberName(updated.member_id));
+  req.log.info({ event: 'thanks_sent', gatheringId: gathering.id, media: file ? mediaOf(file) : 'text' }, 'thank-you sent');
+  emitAll(gathering.id, 'proof', view);
+  await emitToMember(gathering.id, updated.member_id, 'thanks', { from: gathering.away_name, proofId: proof.id, requestText: request.text });
+  return { proof: view };
+});
 
 // The away person withdraws a request or letter.
 app.delete('/api/requests/:rid', async (req) => {

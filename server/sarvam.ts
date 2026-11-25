@@ -75,7 +75,8 @@ export async function transcribe(
 ): Promise<Transcript> {
   const bytes = await readFile(filePath(file));
   const form = new FormData();
-  form.append('file', new Blob([bytes], { type: mimeOf(file) }), file.split('/').pop());
+  // Sarvam lists WebM by its usual .webm name, so audio saved as .weba is sent under that name.
+  form.append('file', new Blob([bytes], { type: mimeOf(file) }), file.split('/').pop()!.replace(/\.weba$/, '.webm'));
   form.append('model', sttModel);
   form.append('mode', opts.mode ?? 'transcribe');
   form.append('language_code', opts.language || 'unknown');

@@ -82,6 +82,8 @@ export type Proof = {
   url: string;
   caption: string | null;
   createdAt: number;
+  // The away person's thank-you for this proof, once sent.
+  thanks: { text: string | null; url: string | null; media: 'audio' | 'video' | 'photo' | null; at: number } | null;
 };
 
 export type Story = {
@@ -193,6 +195,7 @@ export function roomApi(id: string, who: Who) {
     // Guest only: change your name, or your photo (an uploaded file, or null to remove it).
     updateMe: (changes: { name?: string; photo?: string | null }) => call<{ member: Member }>('POST', `${g}/me`, changes),
     // Away only.
+    thank: (proofId: string, changes: { text?: string; file?: string }) => call<{ proof: Proof }>('POST', `/api/proofs/${proofId}/thanks`, changes),
     setDuty: (until: number | null, note?: string) => call<{ gathering: PublicGathering }>('POST', `${g}/duty`, { until, note }),
     seen: () => call<{ ok: true }>('POST', `${g}/seen`, {}),
     setAwayTz: (tz: string) => call<{ ok: true }>('POST', `${g}/away-tz`, { tz }),

@@ -58,6 +58,15 @@ export function proofView(p: ProofRow, memberName: string) {
     url: mediaUrl(p.file),
     caption: p.caption,
     createdAt: p.created_at,
+    // The away person's thank-you, once they've sent one.
+    thanks: p.thanks_at
+      ? {
+          text: p.thanks_text ?? null,
+          url: p.thanks_file ? mediaUrl(p.thanks_file) : null,
+          media: p.thanks_file ? mediaOf(p.thanks_file) : null,
+          at: p.thanks_at,
+        }
+      : null,
   };
 }
 

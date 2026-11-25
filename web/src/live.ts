@@ -18,6 +18,8 @@ export function useRoom(id: string, who: Who | null) {
   const [accepted, setAccepted] = useState<Accepted | null>(null);
   // Hichki back: the away person thought of this guest.
   const [hichkiBack, setHichkiBack] = useState<Hichki | null>(null);
+  // The away person thanked this guest for the proof they picked.
+  const [thanks, setThanks] = useState<{ from: string; proofId: string; requestText: string } | null>(null);
   // Difference between the server's clock and this phone's, for countdowns.
   const skew = useRef(0);
 
@@ -73,6 +75,7 @@ export function useRoom(id: string, who: Who | null) {
     socket.on('hichki', setHichki);
     socket.on('hichki:sent', setHichkiSent);
     socket.on('hichki:back', setHichkiBack);
+    socket.on('thanks', setThanks);
 
     // A phone that was closed missed events, so fetch everything again when it comes back.
     const onVisible = () => document.visibilityState === 'visible' && load();
@@ -94,7 +97,7 @@ export function useRoom(id: string, who: Who | null) {
     if (occasion) document.documentElement.dataset.occasion = occasion;
   }, [occasion]);
 
-  return { feed, api, connected, error, hichki, hichkiSent, hichkiBack, accepted, now: () => Date.now() + skew.current };
+  return { feed, api, connected, error, hichki, hichkiSent, hichkiBack, thanks, accepted, now: () => Date.now() + skew.current };
 }
 
 export type Room = ReturnType<typeof useRoom>;

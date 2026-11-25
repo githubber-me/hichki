@@ -28,7 +28,7 @@ She wasn't there. But she was part of it.
 
 ## What you can do
 
-**Be my eyes.** Ask the room to show you something. "Show me the mehendi." "Show me Papa dancing." Everyone at the gathering can answer, and you pick the photo you love most.
+**Be my eyes.** Ask the room to show you something. "Show me the mehendi." "Show me Papa dancing." Everyone at the gathering can answer, and you pick the photo you love most. Then you can say thank you, in a line, a voice note or a quick video, and it reaches them straight away.
 
 **Meri taraf se** (on my behalf). Ask someone to do something for you, and get proof back. "Touch Nani's feet for me." "Light a diya for me at the temple."
 

@@ -19,7 +19,8 @@ const EXTENSIONS: Record<string, { ext: string; media: Media }> = {
   'image/webp': { ext: 'webp', media: 'photo' },
   'image/heic': { ext: 'heic', media: 'photo' },
   'image/heif': { ext: 'heif', media: 'photo' },
-  'audio/webm': { ext: 'webm', media: 'audio' },
+  // Audio-only WebM gets .weba, so it can't be mistaken for a WebM video (.webm).
+  'audio/webm': { ext: 'weba', media: 'audio' },
   'audio/ogg': { ext: 'ogg', media: 'audio' },
   'audio/mp4': { ext: 'm4a', media: 'audio' },
   'audio/x-m4a': { ext: 'm4a', media: 'audio' },

@@ -3,6 +3,7 @@ import { api, roomApi, saved, type Member, type Proof, type PublicGathering, typ
 import { useRoom } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
 import { AwayClock, DutyBanner } from '../duty.tsx';
+import { ThanksView } from '../thanks.tsx';
 import type { Hichki } from '../live.ts';
 import { HichkiButton, Leaderboard, MicIcon, PhotoButton, ProofView, RecordButton, Stories, Tabs, clock, uploadPhoto, uploadRecording } from '../parts.tsx';
 
@@ -154,6 +155,11 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
 
       <DutyBanner gathering={feed.gathering} />
       <HichkiBack moment={room.hichkiBack} />
+      {room.thanks && (
+        <p className="banner celebrate" role="status" key={room.thanks.proofId}>
+          {away} said thank you for &ldquo;{room.thanks.requestText}&rdquo;. It&rsquo;s under Already answered.
+        </p>
+      )}
 
       {feed.gathering.wrappedAt && (
         <a className="banner" href={`/g/${gathering.id}/yaadein`}>
@@ -210,6 +216,7 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
                     <p className="request-text">{r.text}</p>
                     {won && <ProofView proof={won} />}
                     {won && <p className="muted">{away} picked {won.memberId === member.id ? 'yours' : `${won.memberName}’s`}.</p>}
+                    {won?.thanks && <ThanksView thanks={won.thanks} from={away} />}
                   </article>
                 );
               })}

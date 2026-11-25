@@ -114,6 +114,7 @@ A request is one card in the room.
 | `DELETE /api/requests/:rid` | away | | `{ request }` (now `closed`) |
 | `POST /api/requests/:rid/proofs` | guest | `{ file, caption? }` | `{ proof }` |
 | `POST /api/requests/:rid/accept` | away | `{ proofId }` | `{ request }` |
+| `POST /api/proofs/:pid/thanks` | away | `{ text?, file? }` | `{ proof }`. A thank-you on the picked proof: a line of text, or an uploaded voice or video note. Proofs carry `thanks` (`{ text, url, media, at }` or `null`); the sender's phones get a `thanks` event `{ from, proofId, requestText }`. |
 
 **Speaking a request** is two steps: upload the recording, call `draft` to get a card from Sarvam, let the away person check or edit it, then create it. If `draft` fails (409 when the `ai_requests` flag is off, 502 or 503 when Sarvam can't help), show a text box instead. Typed requests skip `draft`.
 
