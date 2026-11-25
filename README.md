@@ -94,6 +94,6 @@ The photos, voices and stories shared at a gathering are kept on our own server,
 
 ## For builders
 
-How Hichki is put together is in [ARCHITECTURE.md](ARCHITECTURE.md). Setup steps will be added here as the app takes shape.
+To run Hichki yourself, on a laptop or on Kubernetes, follow [docs/setup.md](docs/setup.md). How it's put together is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 Hichki is being built with help from Claude, an AI coding assistant. Every decision and every line that ships is reviewed by a person.
