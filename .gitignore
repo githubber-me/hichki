@@ -15,3 +15,28 @@ data/
 # Logs and OS files
 *.log
 .DS_Store
+
+# Extra app data from running more than one instance (DATA_DIR=./data2, ./data-trip ...)
+data-*/
+data[0-9]*/
+uploads/
+*.db
+*.sqlite3
+
+# Recordings and media that running the app can leave behind.
+# The app's own images are .webp, .png and .svg, so these never hold real assets.
+*.mp4
+*.mov
+*.webm
+*.weba
+*.m4a
+*.wav
+*.mp3
+*.ogg
+*.jpg
+*.jpeg
+*.heic
+
+# Browser test output
+test-results/
+playwright-report/

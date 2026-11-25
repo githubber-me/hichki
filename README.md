@@ -2,7 +2,9 @@
 
 **Kisi ne yaad kiya.** Someone remembered you.
 
-Every festive gathering has an empty chair: the sister whose visa didn't come through, the son on a night shift abroad, the grandfather too unwell to travel. A video call lets them watch, but not take part. Hichki gives the person who couldn't come a real place at the gathering, using just their voice.
+### We've all been there: somewhere we badly wanted to be, and couldn't, for one reason or another.
+
+Every wedding and every Diwali has an empty chair: the sister whose visa didn't come through, the son on a night shift abroad, the grandfather too unwell to travel. A video call lets them watch, but not take part. Hichki gives the person who couldn't come a real place at the gathering, using just their voice.
 
 <p align="center">
   <img src="docs/screenshots/away.webp" width="200" alt="The person who couldn't come taps and speaks a request">
