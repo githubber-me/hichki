@@ -426,6 +426,33 @@ form .btn, .card > .btn, .composer .btn { width: 100%; }
 .tabs button { flex: 1; max-width: 150px; border: 0; background: none; padding: 9px 4px; font-family: var(--font-display); font-size: 16px; color: var(--rice-soft); border-radius: var(--hand-sm); cursor: pointer; transition: background 0.2s, color 0.2s; }
 .tabs button.is-active { background: var(--rice); color: var(--wall-deep); }
 
+/* ---------- Paintings around the app ---------- */
+
+/* Landing: a line of dancers under the title, and the village along the bottom. */
+.hero-create::after { content: ''; width: 100%; height: 58px; margin-top: 16px; background: url('/brand/art/dancers-line.webp') center / contain no-repeat; }
+.screen:has(.hero-create)::after { content: ''; height: 104px; background: url('/brand/art/village.webp') center bottom / contain no-repeat; }
+
+/* Joining: two hills, two people, a bridge of dots between them. */
+.hero-join::before { content: ''; height: 150px; background: url('/brand/art/far-bridge.webp') center / contain no-repeat; }
+
+/* Section heads carry their own small painting. */
+.stories { --head-art: url('/brand/art/feature-story.webp'); }
+.letters { --head-art: url('/brand/art/feature-letter.webp'); }
+.section-head { grid-template-columns: 1fr 96px; column-gap: 12px; align-items: center; }
+.section-head > * { grid-column: 1; }
+.section-head::after { content: ''; grid-column: 2; grid-row: 1 / span 2; height: 92px; background: var(--head-art) center / contain no-repeat; }
+
+/* A sealed pot for a locked letter; birds fly out when it opens. */
+.letter-card::before { content: ''; height: 96px; background: url('/brand/art/feature-letter.webp') left center / contain no-repeat; }
+.letter-card.is-open::before, .letter-card.is-unlocked::before { background-image: url('/brand/art/state-opened.webp'); }
+.letter-composer::before, .letter-card.is-scheduled::before { content: none; }
+.request-card.is-scheduled::before { content: ''; height: 58px; background: url('/brand/art/state-scheduled.webp') left center / contain no-repeat; }
+
+/* The QR sits inside a wedding chowk, the square Warli painters draw for a marriage. */
+.qr-frame { width: min(318px, 86vw); padding: 22%; background: url('/brand/art/chowk-frame.webp') center / contain no-repeat; border-radius: 0; }
+/* A light margin of about four QR dots, so every phone camera can find the code. */
+.qr-frame svg { background: var(--rice); padding: 16px; border-radius: 5px; }
+
 /* ---------- Occasions ----------
    A gathering's occasion is set as data-occasion on <html>. Each one can swap
    the wall colour and the art without touching any screen. Only the wedding

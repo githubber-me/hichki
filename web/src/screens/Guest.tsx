@@ -44,7 +44,7 @@ function Join({ gathering, onJoined }: { gathering: PublicGathering; onJoined: (
 
   return (
     <main className="screen">
-      <header className="hero">
+      <header className="hero hero-join">
         <p className="muted">You&rsquo;re invited to</p>
         <h1>{gathering.name}</h1>
         <p>
