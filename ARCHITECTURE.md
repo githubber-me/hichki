@@ -25,8 +25,8 @@ Hichki is one Node.js server and one mobile-first web page. Everyone at a gather
 
 The rule: the home page shows what needs you, plus what just happened. Everything else lives on its own page, by type.
 
-- **Guests: Now · Moments · People.** Now has Hichki at the top, then what's waiting on you (open requests and sealed letters), then **Just now**: the last 15 minutes of activity. If nothing happened in the last 15 minutes, that becomes **Highlights so far**: up to six moments, picked photos first, then opened letters, stories, thank-yous and hichkis that came with a line. Moments has everything so far, by type: Answered, Photos, Voices, Letters, Stories and Hichkis. People has your profile, the leaderboard and who's here.
-- **The away person: Ask · Moments · Letters · People.** Ask has the catch-up, the same Just now strip, duty, the mic and ideas, and their requests.
+- **Guests: Now · Gallery · Moments · People.** Gallery holds every photo and video, newest first, with Meera's picks and loves marked; tap one to see it full screen, swipe or step through, and save it. Now has Hichki at the top, then what's waiting on you (open requests and sealed letters), then **Just now**: the last 15 minutes of activity. If nothing happened in the last 15 minutes, that becomes **Highlights so far**: up to six moments, picked photos first, then opened letters, stories, thank-yous and hichkis that came with a line. Moments has everything else so far, by type: Answered, Voices, Letters, Stories and Hichkis. People has your profile, the leaderboard and who's here.
+- **The away person: Ask · Gallery · Moments · Letters · People.** Ask has the catch-up, the same Just now strip, duty, the mic and ideas, and their requests.
 
 ## Roles
 

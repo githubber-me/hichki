@@ -4,6 +4,7 @@ import { useRoom } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
 import { AwayClock, DutyBanner } from '../duty.tsx';
 import { ActivityStrip, Moments } from '../moments.tsx';
+import { Gallery } from '../gallery.tsx';
 import { VideoNote } from '../thanks.tsx';
 import { rememberedLine } from '../words.ts';
 import { LangPicker, LangProvider, T, saveLang, savedLang, useLang } from '../lang.tsx';
@@ -128,7 +129,7 @@ function NameJoin({ gathering, onJoined }: { gathering: PublicGathering; onJoine
   );
 }
 
-type Tab = 'now' | 'moments' | 'people';
+type Tab = 'now' | 'gallery' | 'moments' | 'people';
 
 function Room({ gathering, member }: { gathering: PublicGathering; member: Member }) {
   const room = useRoom(gathering.id, { role: 'guest', memberId: member.id });
@@ -216,11 +217,12 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
           <ActivityStrip feed={feed} me={member.id} />
 
           <button type="button" className="btn btn-quiet see-moments" onClick={() => setTab('moments')}>
-            See every photo, voice, letter and story
+            See every voice, letter and story
           </button>
         </>
       )}
 
+      {tab === 'gallery' && <Gallery feed={feed} me={member.id} />}
       {tab === 'moments' && <Moments feed={feed} api={roomApi} me={member.id} canRecord />}
 
       {tab === 'people' && (
@@ -235,6 +237,7 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
       <Tabs<Tab>
         tabs={[
           ['now', 'Now'],
+          ['gallery', 'Gallery'],
           ['moments', 'Moments'],
           ['people', `People (${feed.presence.members.length})`],
         ]}

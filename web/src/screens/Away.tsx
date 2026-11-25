@@ -5,13 +5,14 @@ import { MemberList } from './MemberList.tsx';
 import { CatchUpCard, DutyControl } from '../duty.tsx';
 import { SoundPrimer, playHichki, useWakeLock } from '../device.tsx';
 import { ActivityStrip, Moments } from '../moments.tsx';
+import { Gallery } from '../gallery.tsx';
 import { gloss, rememberedLine, w } from '../words.ts';
 import { LangPicker, LangProvider, T, useLang } from '../lang.tsx';
 import { ThanksComposer, ThanksView } from '../thanks.tsx';
 import { Yaadein } from './Yaadein.tsx';
 import { StoryWords, Leaderboard, MicIcon, ProofView, RecordButton, Tabs, ago, clock, uploadRecording } from '../parts.tsx';
 
-type Tab = 'ask' | 'moments' | 'letters' | 'people';
+type Tab = 'ask' | 'gallery' | 'moments' | 'letters' | 'people';
 
 // The private screen for the person who couldn't come.
 export function Away({ id, token: urlToken }: { id: string; token: string }) {
@@ -54,7 +55,7 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
   if (g.wrappedAt && !inRoom) return <Yaadein id={id} who={{ role: 'away', token }} onRoom={() => setInRoom(true)} />;
 
   const here = feed.presence.members.filter((m) => m.online).length;
-  const tabs: [Tab, string][] = [['ask', 'Ask'], ['moments', 'Moments']];
+  const tabs: [Tab, string][] = [['ask', 'Ask'], ['gallery', 'Gallery'], ['moments', 'Moments']];
   if (feed.flags.jab_kholna) tabs.push(['letters', 'Letters']);
   tabs.push(['people', `People (${feed.presence.members.length})`]);
 
@@ -88,6 +89,7 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
         </>
       )}
       {tab === 'letters' && feed.flags.jab_kholna && <Letters api={api} feed={feed} />}
+      {tab === 'gallery' && <Gallery feed={feed} />}
       {tab === 'moments' && <Moments feed={feed} api={api} canRecord={false} />}
       {tab === 'people' && (
         <>

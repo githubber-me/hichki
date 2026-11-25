@@ -764,3 +764,19 @@ audio { accent-color: var(--haldi); }
 .proof-actions { flex-wrap: nowrap; gap: 6px; }
 .proof-grid .proof-actions .btn { flex: 1; min-height: 36px; padding: 4px 6px; font-family: var(--font-body); font-weight: 600; font-size: 13.5px; box-shadow: inset 0 0 0 1.5px var(--rice-faint); border-radius: 999px; white-space: nowrap; }
 .proof-grid .proof-actions .love.is-loved { box-shadow: none; }
+
+/* ---------- Gallery ---------- */
+.gallery { display: grid; gap: 14px; }
+.gallery-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.gallery-grid li button { position: relative; display: block; width: 100%; aspect-ratio: 1; padding: 0; border: 0; background: var(--wall-deep); cursor: pointer; overflow: hidden; border-radius: 4px; }
+.gallery-grid img, .gallery-grid video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gallery-grid li.is-picked button { box-shadow: inset 0 0 0 3px var(--haldi); }
+.gallery-grid li.is-loved button { box-shadow: inset 0 0 0 2px var(--rice-soft); }
+.gallery-mark { position: absolute; top: 4px; right: 6px; font-size: 15px; color: var(--haldi); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
+.gallery-play { position: absolute; inset: 0; margin: auto; width: 0; height: 0; border-style: solid; border-width: 11px 0 11px 18px; border-color: transparent transparent transparent var(--rice); filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6)); }
+.viewer { position: fixed; inset: 0; z-index: 50; display: grid; grid-template-rows: 1fr auto; background: #120806; color: var(--rice); }
+.viewer-media { display: grid; place-items: center; overflow: hidden; touch-action: pan-y; }
+.viewer-media img, .viewer-media video { max-width: 100%; max-height: 100%; object-fit: contain; }
+.viewer-bar { display: grid; gap: 10px; padding: 14px 18px calc(14px + env(safe-area-inset-bottom)); background: var(--wall-deep); }
+.viewer-caption { margin: 0; font-size: 15px; line-height: 1.4; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.viewer-actions { display: flex; justify-content: space-between; gap: 8px; }

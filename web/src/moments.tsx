@@ -164,10 +164,9 @@ export function Moments({ feed, api, me, canRecord }: { feed: Feed; api: RoomApi
     stories: feed.stories.length,
     hichkis: (feed.hichkis ?? []).length,
   };
-  const [kind, setKind] = useState<Kind>(() => (answered.length ? 'answered' : photos.length ? 'photos' : 'hichkis'));
+  const [kind, setKind] = useState<Kind>(() => (answered.length ? 'answered' : 'hichkis'));
   const labels: [Kind, string][] = [
     ['answered', 'Answered'],
-    ['photos', 'Photos'],
     ['voices', 'Voices'],
     ['letters', 'Letters'],
     ['stories', 'Stories'],
