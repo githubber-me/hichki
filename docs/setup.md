@@ -47,15 +47,35 @@ This prints a public `https://….trycloudflare.com` address. Open it on the hos
 
 NudgeBee watches the cluster and investigates when something breaks.
 
-1. In NudgeBee, add a Kubernetes account and copy its agent key into `.env.local` as `NUDGEBEE_AGENT_KEY`.
-2. Install the agent into the cluster with NudgeBee's install script. On kind, pass `-d true` to turn off the eBPF node agent, which kind can't run:
+1. In NudgeBee, add a Kubernetes account (Admin > Integrations > Kubernetes Clusters > Add K8s Account, Non-production). On Finish Setup, copy the whole command from the Shell Script tab into `.env.local` as one line, `CURL_COMMAND=curl ... && bash installation.sh -a "..." ...`.
+2. Install the agent:
 
 ```bash
-curl -fsSLO https://raw.githubusercontent.com/nudgebee/k8s-agent/main/installation.sh
-bash installation.sh -a "$NUDGEBEE_AGENT_KEY" -d true
+bash deploy/nudgebee.sh
 ```
 
+   This keeps the flags from NudgeBee's command (agent key, relay address, signing key) and adds two for kind: `-k kind-hichki` so it can only go into this cluster, and `-d true` to turn off the eBPF node agent, which kind can't run. It also installs Loki, which gives NudgeBee the app's logs for the `uploads` fault. NudgeBee's command passes `-g true` and `-t true`, so no Prometheus or ClickHouse is installed; NudgeBee sees an OOMKilled pod through Kubernetes pod status and events. The install summary then says Prometheus and ClickHouse "failed"; that only means they were left out.
+
 3. Check the agent is connected: `kubectl get pods -n nudgebee-agent`. The cluster shows as connected in NudgeBee after a few minutes.
+
+## 6. Break it on purpose
+
+To give NudgeBee a real problem to investigate:
+
+```bash
+bash deploy/break.sh uploads
+```
+
+| Fault | What happens | Ask NudgeBee |
+| --- | --- | --- |
+| `uploads` | Every photo and voice note fails with HTTP 500: the uploads folder is read-only | Why are photo uploads failing for the hichki deployment in the hichki namespace? |
+| `memory` | The server leaks memory until it passes its 512Mi limit and is OOMKilled, then restarts in a loop | Why does the hichki pod in the hichki namespace keep restarting? |
+
+NudgeBee's investigation can take around 8 minutes. Put the app right with:
+
+```bash
+bash deploy/fix.sh
+```
 
 ## Checks
 
