@@ -699,11 +699,6 @@ a.btn, a.banner { text-decoration: none; }
 .set-aside > summary { cursor: pointer; font-size: 14px; color: var(--rice-soft); padding: 6px 0; }
 .photo-grid li.is-loved .proof-media { box-shadow: 0 0 0 2px var(--haldi); }
 
-/* ---------- Hearts and set aside ---------- */
-.proof-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.love.is-loved { color: var(--haldi); box-shadow: inset 0 0 0 1.5px var(--haldi); }
-.set-aside > summary { cursor: pointer; font-size: 14px; color: var(--rice-soft); padding: 6px 0; }
-.photo-grid li.is-loved .proof-media { box-shadow: 0 0 0 2px var(--haldi); }
 .thanks-video.is-mirrored { transform: scaleX(-1); }
 .nominee-picker { display: grid; gap: 8px; }
 .retry { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
