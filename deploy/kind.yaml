@@ -1,0 +1,14 @@
+# A small local Kubernetes cluster for Hichki: one control plane and two workers,
+# the same shape NudgeBee's local setup guide uses.
+# The app's NodePort 30080 is reachable on this machine at http://localhost:8088.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: hichki
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 8088
+        listenAddress: "127.0.0.1"
+  - role: worker
+  - role: worker

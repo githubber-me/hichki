@@ -1,0 +1,100 @@
+# Hichki on Kubernetes: one pod, one persistent volume for the SQLite database
+# and uploads, and a NodePort the cluster exposes on localhost:8088.
+#
+# Secrets (Sarvam and Flagsmith keys) are created by deploy/deploy.sh from
+# .env.local, so they never appear in this file.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hichki
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hichki-config
+  namespace: hichki
+  labels: { app.kubernetes.io/name: hichki }
+data:
+  PORT: "8080"
+  DATA_DIR: /data
+  LOG_LEVEL: info
+  MAX_UPLOAD_MB: "10"
+  SARVAM_STT_MODEL: saaras:v4
+  SARVAM_CHAT_MODEL: sarvam-105b
+  SARVAM_TRANSLATE_MODEL: sarvam-translate:v1
+  FLAGSMITH_REFRESH_SECONDS: "10"
+  FLAGSMITH_EXPERIMENTS: "off"
+  # Empty: the QR code uses whatever address the host opened, such as the tunnel URL.
+  PUBLIC_BASE_URL: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hichki-data
+  namespace: hichki
+  labels: { app.kubernetes.io/name: hichki }
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hichki
+  namespace: hichki
+  labels: { app.kubernetes.io/name: hichki, app.kubernetes.io/component: server }
+spec:
+  replicas: 1
+  # One pod owns the SQLite file and the live connections, so replace it rather than run two.
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app.kubernetes.io/name: hichki }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: hichki, app.kubernetes.io/component: server }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: server
+          image: hichki:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 8080 }
+          envFrom:
+            - configMapRef: { name: hichki-config }
+            - secretRef: { name: hichki-secrets }
+          resources:
+            requests: { cpu: 100m, memory: 192Mi }
+            limits: { cpu: "1", memory: 512Mi }
+          # Liveness: the process answers. Readiness: the database answers too.
+          livenessProbe:
+            httpGet: { path: /api/health, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: { path: /api/ready, port: http }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          volumeMounts:
+            - { name: data, mountPath: /data }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: hichki-data }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hichki
+  namespace: hichki
+  labels: { app.kubernetes.io/name: hichki }
+spec:
+  type: NodePort
+  selector: { app.kubernetes.io/name: hichki }
+  ports:
+    - { name: http, port: 80, targetPort: http, nodePort: 30080 }
