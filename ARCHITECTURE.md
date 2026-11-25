@@ -31,13 +31,23 @@ Hichki is one Node.js server and one mobile-first web page. Everyone at a gather
 
 There are no accounts or passwords.
 
+## Gatherings last for days
+
+Weddings and festivals run over several days, so a gathering never expires on its own.
+
+- The away link works for the whole celebration. The away person sets things up once and comes back whenever they like.
+- Each phone remembers who it is in each gathering (`localStorage`), so a guest who returns on day three is straight back in.
+- Requests and voice letters can be **scheduled**: each has an optional `live_at` (when it appears in the room) and `until` (when it stops taking answers). The server checks every few seconds and broadcasts anything that has just gone live. On Wednesday, Meera can set up "Friday 1 PM: play my message for the couple" and "Saturday sangeet: show me Papa dancing".
+- A voice letter unlocks either at a time or at a moment the room proves happened.
+- A phone that is closed can't be woken. When a guest opens the page, they see what went live since their last visit.
+
 ## Stack
 
 | Part | Choice | Why |
 | --- | --- | --- |
 | Server | Node.js 22, TypeScript, Fastify | Small, fast, one language end to end |
 | Live updates | Socket.IO | Rooms map directly to gatherings |
-| Storage | SQLite (better-sqlite3) and an uploads folder | One file, no database server to run |
+| Storage | SQLite (built into Node, `node:sqlite`) and an uploads folder | One file, no database server and no native module to build |
 | Web page | Vite, React | Mobile first, served by the same server |
 | Hosting | One container on Kubernetes, one persistent volume | Runs where NudgeBee can watch it |
 
@@ -68,9 +78,9 @@ A guest taps the button. The server forwards it to the away person's open page, 
 
 | Table | Fields |
 | --- | --- |
-| gatherings | id, name, occasion, away_name, away_token, created_at |
-| members | id, gathering_id, name, points |
-| requests | id, gathering_id, kind (`see`, `do`, `letter`), text, audio_path, language, open_when, status, accepted_proof_id |
+| gatherings | id, name, occasion, away_name, host_token, away_token, created_at |
+| members | id, gathering_id, device_id, name, points, created_at |
+| requests | id, gathering_id, kind (`see`, `do`, `letter`), text, audio_path, language, live_at, until, open_when, status, accepted_proof_id |
 | proofs | id, request_id, member_id, file_path, created_at |
 | stories | id, gathering_id, teller, audio_path, language, transcript, translation |
 

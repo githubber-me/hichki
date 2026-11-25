@@ -46,6 +46,18 @@ She wasn't there. But she was part of it.
 
 **If you couldn't come,** you open your link and talk. That's it.
 
+## Set it up once, for the whole celebration
+
+A wedding isn't one evening. It's the haldi, the mehendi, the sangeet, the pheras and the reception, spread over days.
+
+So Hichki lasts as long as the celebration does. On Wednesday, Meera can sit down once and plan her whole week:
+
+- Thursday morning: *"Show me the haldi."*
+- Friday at 1 PM: a voice message for the couple, played at lunch.
+- Saturday at the sangeet: *"Get Papa on the dance floor, and send me proof."*
+
+Each one appears at the gathering exactly when she wanted it to. Her link keeps working all week, and so does everyone else's.
+
 ## Not just weddings
 
 Hichki works for any gathering where someone is missing: Diwali at home, Christmas dinner, New Year's Eve, Eid, a family trip, a birthday.
@@ -58,8 +70,9 @@ Hichki is being built from scratch, in one day, at [Festive Hacks](https://www.w
 
 By the end of the day, these are our goals:
 
-- [ ] People can join a gathering by scanning a QR code
+- [x] People can join a gathering by scanning a QR code
 - [ ] The person who couldn't come can speak a request, and it appears on every phone
+- [ ] Requests and messages can be planned ahead and appear on their own, days later
 - [ ] The room can send photos and voice notes back, and the best one wins points
 - [ ] One tap sends a hichki across the world
 - [ ] Voice letters unlock when their moment comes
