@@ -3,7 +3,7 @@
 
 import { Camera } from './camera.tsx';
 import { T, useLang } from './lang.tsx';
-import { gloss, w } from './words.ts';
+import { gloss, hichkiWord, w } from './words.ts';
 import { useState, type ReactNode } from 'react';
 import type { HichkiEntry, Presence, Proof, RoomApi, Story } from './api.ts';
 import { recordingName, shrinkPhoto, useRecorder } from './recorder.ts';
@@ -132,8 +132,8 @@ export function HichkiButton({ api, awayName }: { api: RoomApi; awayName: string
       {/* The key restarts the animation on every tap. */}
       <button type="button" key={taps} className={`hichki-btn ${taps ? 'is-sent' : ''}`} onClick={tap} aria-label={`Send ${awayName} a hichki`}>
         <span className="hichki-art" aria-hidden="true" />
-        <span className="hichki-label" lang="hi">
-          हिचकी
+        <span className="hichki-label" lang={hichkiWord().lang}>
+          {hichkiWord().text}
         </span>
       </button>
       <p className="hichki-hint" aria-live="polite">

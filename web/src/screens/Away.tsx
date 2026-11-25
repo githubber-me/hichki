@@ -5,7 +5,7 @@ import { MemberList } from './MemberList.tsx';
 import { CatchUpCard, DutyControl } from '../duty.tsx';
 import { SoundPrimer, playHichki, useWakeLock } from '../device.tsx';
 import { ActivityStrip, Moments } from '../moments.tsx';
-import { gloss, w } from '../words.ts';
+import { gloss, rememberedLine, w } from '../words.ts';
 import { LangPicker, LangProvider, T, useLang } from '../lang.tsx';
 import { ThanksComposer, ThanksView } from '../thanks.tsx';
 import { Yaadein } from './Yaadein.tsx';
@@ -122,8 +122,8 @@ function HichkiMoment({ hichki }: { hichki: Hichki | null }) {
     <div className="hichki-toast" role="status" key={show.at}>
       <span className="hichki-art" aria-hidden="true" />
       <div>
-        <p className="hichki-line" lang="hi">
-          किसी ने याद किया
+        <p className="hichki-line" lang={rememberedLine().lang}>
+          {rememberedLine().text}
         </p>
         <p className="muted">
           {show.from} thought of you, just now{show.note ? <>, <em><T text={show.note} toggle={false} /></em></> : null}

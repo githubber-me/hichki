@@ -5,6 +5,7 @@ import { MemberList } from './MemberList.tsx';
 import { AwayClock, DutyBanner } from '../duty.tsx';
 import { ActivityStrip, Moments } from '../moments.tsx';
 import { VideoNote } from '../thanks.tsx';
+import { rememberedLine } from '../words.ts';
 import { LangPicker, LangProvider, T, saveLang, savedLang, useLang } from '../lang.tsx';
 import type { Hichki } from '../live.ts';
 import { HichkiButton, Leaderboard, MicIcon, PhotoButton, RecordButton, Tabs, clock, uploadPhoto, uploadRecording } from '../parts.tsx';
@@ -648,8 +649,8 @@ export function HichkiBack({ moment }: { moment: Hichki | null }) {
     <div className="hichki-toast" role="status" key={show.at}>
       <span className="hichki-art" aria-hidden="true" />
       <div>
-        <p className="hichki-line" lang="hi">
-          {show.from} ने याद किया
+        <p className="hichki-line" lang={rememberedLine(show.from).lang}>
+          {rememberedLine(show.from).text}
         </p>
         <p className="muted">
           {show.toAll ? `${show.from} is thinking of you all` : `${show.from} thought of you, just now`}

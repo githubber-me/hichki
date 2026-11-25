@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import type { CatchUp, Feed, PublicGathering, RoomApi } from './api.ts';
 import { T } from './lang.tsx';
-import { w } from './words.ts';
+import { rememberedLine, w } from './words.ts';
 
 // "Toronto" from "America/Toronto".
 function placeOf(tz: string) {
@@ -154,8 +154,8 @@ export function CatchUpCard({ api, feed, catchUp, onDone }: { api: RoomApi; feed
         <div className="catch-up-hichki">
           <span className="hichki-art" aria-hidden="true" />
           <div>
-            <p className="hichki-line" lang="hi">
-              किसी ने याद किया
+            <p className="hichki-line" lang={rememberedLine().lang}>
+              {rememberedLine().text}
             </p>
             <p>
               {people.length === 1 ? people[0] : `${people.length} people`} thought of you{n > 1 ? `, ${n} times` : ''}.

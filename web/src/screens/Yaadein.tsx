@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getKeepsake, publicBaseUrl, saved, type Keepsake, type KeepsakeWho, type Proof, type Req, type Story, type Tap } from '../api.ts';
 import { ProofView } from '../parts.tsx';
-import { setRoomLang, w } from '../words.ts';
+import { hichkiWord, rememberedCount, rememberedLine, setRoomLang, w } from '../words.ts';
 
 // Yaadein (memories): what a celebration leaves behind. One page with every
 // answered request, opened letter, story and hichki, in the order they happened.
@@ -332,7 +332,7 @@ export function Yaadein({
           {taps > 0 && (
             <p className="yaad-count">
               <b>{taps}</b>
-              <span lang="hi">बार याद किया</span>
+              <span lang={rememberedCount().lang}>{rememberedCount().text}</span>
             </p>
           )}
         </div>
@@ -439,8 +439,8 @@ export function Yaadein({
             Back to the room
           </a>
         )}
-        <p className="muted note" lang="hi">
-          हिचकी · किसी ने याद किया
+        <p className="muted note" lang={hichkiWord().lang}>
+          {hichkiWord().text} · {rememberedLine().text}
         </p>
       </footer>
 

@@ -66,7 +66,7 @@ Each one appears at the gathering exactly when she wanted it to. Her link keeps 
 
 ## In your family's language
 
-Hichki is Hichki everywhere, and the button always says हिचकी. Almost every Indian language has the same belief about hiccups. The host picks the room's language, and the names of everything else follow it, written the way people type on their phones: *Jab kholna* in Hindi becomes *Open when* in English, *Yaavaga terebeku* in Kannada, *Eppo thirakkanum* in Tamil. On top of that, each person can read every request and story in their own language.
+Hichki is Hichki everywhere. It's never swapped for another word, only written in the room's own script: हिचकी in a Hindi room, ಹಿಚ್ಕಿ in a Kannada room, ஹிச்கி in a Tamil one, Hichki in English. Almost every Indian language has the same belief about hiccups. The host picks the room's language, and the names of everything else follow it, written the way people type on their phones: *Jab kholna* in Hindi becomes *Open when* in English, *Yaavaga terebeku* in Kannada, *Eppo thirakkanum* in Tamil. On top of that, each person can read every request and story in their own language.
 
 ## Not just weddings
 

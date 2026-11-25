@@ -1,6 +1,7 @@
 // The feature names, in the room's language. The host picks it when creating the
-// gathering. "Hichki" and the हिचकी button stay the same everywhere: they are the
-// name. The rest are written in Roman letters, the way people type them on a phone.
+// gathering. "Hichki" is the name everywhere: it is never swapped for another
+// language's word, only written in the room's script (हिचकी, ಹಿಚ್ಕಿ, ஹிச்கி...).
+// The feature names are written in Roman letters, the way people type them on a phone.
 // Hindi is the default. Rows other than Hindi, English and Kannada should be checked
 // by native speakers.
 
@@ -40,6 +41,23 @@ const WORDS: Record<RoomLang, Words> = {
   ml: { behalf: 'Ente perkku', letter: 'Eppol thurakkanam', story: 'Ammoommayude katha', memories: 'Ormakal', duty: 'Duty-il' },
 };
 
+// "Hichki" itself, written in each room's script. Same word, never translated.
+export const HICHKI_SCRIPT: Record<RoomLang, string> = {
+  hi: 'हिचकी',
+  en: 'Hichki',
+  kn: 'ಹಿಚ್ಕಿ',
+  ta: 'ஹிச்கி',
+  te: 'హిచ్కీ',
+  bn: 'হিচকি',
+  mr: 'हिचकी',
+  gu: 'હિચકી',
+  pa: 'ਹਿਚਕੀ',
+  ml: 'ഹിച്കി',
+};
+
+// HTML lang codes, so phones pick the right font for each script.
+const SCRIPT_LANG: Record<RoomLang, string> = { hi: 'hi', en: 'en', kn: 'kn', ta: 'ta', te: 'te', bn: 'bn', mr: 'mr', gu: 'gu', pa: 'pa', ml: 'ml' };
+
 // One gathering per page, so the current room language is kept here. Screens set it
 // as soon as they know the gathering.
 let current: RoomLang = 'hi';
@@ -56,4 +74,21 @@ export function w(): Words {
 // The plain English meaning, shown small next to a name when the room isn't in English.
 export function gloss(english: string): string | null {
   return current === 'en' ? null : english;
+}
+
+// "Hichki" in this room's script, with its lang code.
+export function hichkiWord(): { text: string; lang: string } {
+  return { text: HICHKI_SCRIPT[current], lang: SCRIPT_LANG[current] };
+}
+
+// "Someone remembered you": the Hindi line in Hindi rooms, plain English elsewhere,
+// so no room shows a sentence in a language it didn't choose.
+export function rememberedLine(from?: string): { text: string; lang: string } {
+  if (current === 'hi') return { text: from ? `${from} ने याद किया` : 'किसी ने याद किया', lang: 'hi' };
+  return { text: from ? `${from} remembered you` : 'Someone remembered you', lang: 'en' };
+}
+
+// The count on the memories page: "12 बार याद किया" or "12 times remembered".
+export function rememberedCount(): { text: string; lang: string } {
+  return current === 'hi' ? { text: 'बार याद किया', lang: 'hi' } : { text: 'times remembered', lang: 'en' };
 }

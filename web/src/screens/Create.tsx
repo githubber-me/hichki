@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, saved } from '../api.ts';
-import { ROOM_LANGS } from '../words.ts';
+import { HICHKI_SCRIPT, ROOM_LANGS } from '../words.ts';
 
 const OCCASIONS = ['wedding', 'diwali', 'christmas', 'new year', 'eid', 'birthday', 'trip', 'gathering'];
 
@@ -41,9 +41,7 @@ export function Create() {
       <header className="hero hero-create">
         {/* A ring of dancers with one gap, and an empty chair standing in it. */}
         <div className="hero-art" role="img" aria-label="A ring of dancers holding hands, with one empty chair in the gap" />
-        <p className="hero-hindi" lang="hi">
-          हिचकी
-        </p>
+        <HichkiScripts />
         <h1 className="hero-title">Hichki</h1>
         <p className="tagline">Kisi ne yaad kiya.</p>
         <p className="muted">Give the person who couldn&rsquo;t come a real place at the gathering.</p>
@@ -100,5 +98,23 @@ export function Create() {
         </button>
       </form>
     </main>
+  );
+}
+
+// On the landing page there is no room yet, so the name goes through every script:
+// हिचकी, ಹಿಚ್ಕಿ, ஹிச்கி... the same word in every family's letters.
+const SCRIPTS = Object.entries(HICHKI_SCRIPT).filter(([code]) => code !== 'en' && code !== 'mr');
+
+function HichkiScripts() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = window.setInterval(() => setI((n) => (n + 1) % SCRIPTS.length), 2200);
+    return () => window.clearInterval(t);
+  }, []);
+  const [code, text] = SCRIPTS[i];
+  return (
+    <p className="hero-hindi" lang={code} key={code} aria-label="Hichki">
+      {text}
+    </p>
   );
 }
