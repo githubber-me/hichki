@@ -4,7 +4,7 @@ import { Create } from './screens/Create.tsx';
 import { Host } from './screens/Host.tsx';
 import { Guest } from './screens/Guest.tsx';
 import { Away } from './screens/Away.tsx';
-import './app.css';
+import './theme.css';
 
 // Four pages, picked from the address:
 //   /                      create a gathering

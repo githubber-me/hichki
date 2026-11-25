@@ -70,6 +70,12 @@ export function useRoom(id: string, who: Who | null) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, key]);
 
+  // The occasion is set on <html>, so theme.css can change the art for it.
+  const occasion = feed?.gathering.occasion;
+  useEffect(() => {
+    if (occasion) document.documentElement.dataset.occasion = occasion;
+  }, [occasion]);
+
   return { feed, api, connected, error, hichki, hichkiSent, accepted, now: () => Date.now() + skew.current };
 }
 

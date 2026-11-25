@@ -30,10 +30,15 @@ export function Create() {
 
   return (
     <main className="screen">
-      <header className="hero">
-        <h1>Hichki</h1>
+      <header className="hero hero-create">
+        {/* A ring of dancers with one gap, and an empty chair standing in it. */}
+        <div className="hero-art" role="img" aria-label="A ring of dancers holding hands, with one empty chair in the gap" />
+        <p className="hero-hindi" lang="hi">
+          हिचकी
+        </p>
+        <h1 className="hero-title">Hichki</h1>
         <p className="tagline">Kisi ne yaad kiya.</p>
-        <p>Give the person who couldn&rsquo;t come a real place at the gathering.</p>
+        <p className="muted">Give the person who couldn&rsquo;t come a real place at the gathering.</p>
       </header>
 
       <form className="card" onSubmit={submit}>

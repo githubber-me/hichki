@@ -27,7 +27,7 @@ export function Host({ id, token: urlToken }: { id: string; token: string }) {
     publicBaseUrl().then(async (base) => {
       const guest = `${base}/g/${id}`;
       setGuestUrl(guest);
-      setQr(await QRCode.toString(guest, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' }));
+      setQr(await QRCode.toString(guest, { type: 'svg', margin: 0, errorCorrectionLevel: 'M', color: { dark: '#5a2212', light: '#0000' } }));
       const away = saved.awayToken(id);
       if (away) setAwayUrl(`${base}/g/${id}/away?t=${away}`);
     });
