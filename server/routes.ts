@@ -51,7 +51,7 @@ import {
 import { isOwnFile, mediaOf, mediaUrl, saveUpload, UploadError } from './files.ts';
 import { flagStatus, flags, packs, requestMode, trackFulfilled } from './flags.ts';
 import { packFor } from './packs.ts';
-import { broadcastPresence, disconnectMember, emitAll, emitAway, emitToMember, onlineMemberIds, presence, publishRequest } from './live.ts';
+import { broadcastPresence, disconnectMember, emitAll, emitAway, emitRoom, emitToMember, onlineMemberIds, presence, publishRequest } from './live.ts';
 import { sarvamEnabled, SarvamError, toCard, transcribe, translate } from './sarvam.ts';
 import { signedInGuest, signInEnabled, SignInError } from './auth.ts';
 import { config } from './config.ts';
@@ -682,6 +682,21 @@ app.post('/api/gatherings/:id/away-tz', async (req) => {
 });
 
 // Hichki back: the away person remembers one particular guest.
+// The away person remembers everyone at once: every guest's and the host's phone
+// gets the moment. Same flag and cooldown as any hichki.
+app.post('/api/gatherings/:id/hichki-room', async (req) => {
+  const g = findGathering((req.params as { id: string }).id);
+  requireCaller(req, g, 'away');
+  if (!flags().hichki) throw new HttpError(409, 'Hichki is switched off right now.');
+  const key = `room:${g.id}`;
+  if (Date.now() - (lastHichki.get(key) ?? 0) < HICHKI_COOLDOWN_MS) throw new HttpError(429, 'Sent. Give it a moment before the next one.');
+  lastHichki.set(key, Date.now());
+  const note = clean(((req.body ?? {}) as Record<string, unknown>).note, 120) || null;
+  req.log.info({ event: 'hichki_room', gatheringId: g.id }, 'hichki to the room');
+  emitRoom(g.id, 'hichki:room', { from: g.away_name, note, at: Date.now() });
+  return { ok: true };
+});
+
 app.post('/api/gatherings/:id/hichki-back', async (req) => {
   const g = findGathering((req.params as { id: string }).id);
   requireCaller(req, g, 'away');

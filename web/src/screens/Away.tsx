@@ -3,6 +3,7 @@ import { ApiError, saved, type Draft, type Feed, type Kind, type Proof, type Req
 import { useRoom, type Hichki } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
 import { CatchUpCard, DutyControl } from '../duty.tsx';
+import { SoundPrimer, playHichki, useWakeLock } from '../device.tsx';
 import { ActivityStrip, Moments } from '../moments.tsx';
 import { ThanksComposer, ThanksView } from '../thanks.tsx';
 import { Yaadein } from './Yaadein.tsx';
@@ -29,6 +30,8 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
   }, [api, feed?.gathering.awayTz]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [caughtUp, setCaughtUp] = useState(false);
+  // Meera keeps her page open to feel each hichki: keep the screen on while it is.
+  useWakeLock(!!token);
 
   // Duty ran out while the page was open: fetch again so the held hichkis show.
   const dutyUntil = feed?.gathering.duty?.until ?? 0;
@@ -67,12 +70,14 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
         </a>
       </header>
 
+      <SoundPrimer />
       <HichkiMoment hichki={room.hichki} />
       {feed.catchUp && !caughtUp && <CatchUpCard api={api} feed={feed} catchUp={feed.catchUp} onDone={() => setCaughtUp(true)} />}
       {tab === 'ask' && <ActivityStrip feed={feed} />}
 
       {tab === 'ask' && (
         <>
+          {feed.flags.hichki && <RoomHichki api={api} />}
           <DutyControl api={api} gathering={g} onChange={() => setCaughtUp(false)} />
           <Composer api={api} feed={feed} />
           <MyRequests api={api} feed={feed} now={room.now()} />
@@ -82,6 +87,7 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
       {tab === 'moments' && <Moments feed={feed} api={api} canRecord={false} />}
       {tab === 'people' && (
         <>
+          {feed.flags.hichki && <RoomHichki api={api} />}
           <Leaderboard presence={feed.presence} limit={10} />
           <MemberList presence={feed.presence} onHichki={feed.flags.hichki ? (mid) => api.hichkiBack(mid) : undefined} />
         </>
@@ -100,7 +106,7 @@ function HichkiMoment({ hichki }: { hichki: Hichki | null }) {
     if (!hichki) return;
     setShow(hichki);
     navigator.vibrate?.([120, 80, 120]);
-    hic();
+    playHichki();
     const t = window.setTimeout(() => setShow(null), 6000);
     return () => window.clearTimeout(t);
   }, [hichki]);
@@ -123,25 +129,6 @@ function HichkiMoment({ hichki }: { hichki: Hichki | null }) {
 
 // A small two-note "hic". Browsers only allow sound after the person has touched
 // the page once, so this stays silent until then.
-function hic() {
-  try {
-    const ctx = new AudioContext();
-    [0, 0.16].forEach((at, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.value = i ? 880 : 660;
-      gain.gain.setValueAtTime(0.0001, ctx.currentTime + at);
-      gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + at + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + 0.14);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(ctx.currentTime + at);
-      osc.stop(ctx.currentTime + at + 0.16);
-    });
-    window.setTimeout(() => ctx.close(), 800);
-  } catch {
-    // No sound is fine; the screen and the buzz still say it.
-  }
-}
 
 // A closed phone can't be woken, so say what arrived while it was away.
 
@@ -197,6 +184,8 @@ function Composer({ api, feed }: { api: RoomApi; feed: Feed }) {
         text: text.trim(),
         textOriginal: draft?.textOriginal,
         transcript: draft?.transcript,
+        // Her own voice goes with it, so the room can hear her ask.
+        audioFile: draft?.file,
         language: draft?.language,
         liveAt: later ? new Date(liveAt).getTime() : null,
       });
@@ -526,5 +515,27 @@ function OpenLetter({ api, letter, proofs }: { api: RoomApi; letter: Req; proofs
       </ul>
       {error && <p className="error">{error}</p>}
     </>
+  );
+}
+
+// Hichki back, to everyone at once: "Meera is thinking of you all".
+function RoomHichki({ api }: { api: RoomApi }) {
+  const [msg, setMsg] = useState('');
+  async function send() {
+    try {
+      await api.hichkiRoom();
+      setMsg('Sent. Every phone there just buzzed.');
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+    window.setTimeout(() => setMsg(''), 3000);
+  }
+  return (
+    <div className="room-hichki">
+      <button type="button" className="btn btn-quiet" onClick={send}>
+        Send everyone a hichki
+      </button>
+      {msg && <p className="muted small" aria-live="polite">{msg}</p>}
+    </div>
   );
 }

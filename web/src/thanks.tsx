@@ -68,7 +68,7 @@ export function ThanksComposer({ api, proof }: { api: RoomApi; proof: Proof }) {
           <button type="button" className="btn btn-quiet btn-small" onClick={() => setMode('text')}>
             Write
           </button>
-          <RecordButton onDone={voice} disabled={!!busy} className="btn btn-quiet btn-small" idle={<><MicIcon /> Voice</>} />
+          <RecordButton onDone={voice} disabled={!!busy} className="btn btn-quiet btn-small" maxSeconds={Infinity} idle={<><MicIcon /> Voice</>} />
           <button type="button" className="btn btn-quiet btn-small" onClick={() => setMode('video')}>
             Video
           </button>

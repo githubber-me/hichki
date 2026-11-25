@@ -37,13 +37,16 @@ export function RecordButton({
   idle,
   className = 'btn',
   disabled,
+  maxSeconds = 30,
 }: {
   onDone: (blob: Blob) => void;
   idle: ReactNode;
   className?: string;
   disabled?: boolean;
+  maxSeconds?: number; // Infinity for no limit (only Sarvam needs the 30 second cap)
 }) {
-  const r = useRecorder(onDone);
+  const r = useRecorder(onDone, maxSeconds);
+  const unlimited = !Number.isFinite(maxSeconds);
   return (
     <div className="recorder">
       <button
@@ -55,7 +58,7 @@ export function RecordButton({
       >
         {r.recording ? (
           <span className="recording-count">
-            <b>{r.left}</b>
+            <b>{unlimited ? `${Math.floor(r.seconds / 60)}:${String(r.seconds % 60).padStart(2, '0')}` : r.left}</b>
             <small>tap to stop</small>
           </span>
         ) : (

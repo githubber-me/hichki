@@ -270,6 +270,7 @@ function RequestCard({
           {request.textOriginal}
         </p>
       )}
+      <HearAsk request={request} away={away} />
 
       <div className="actions">
         <PhotoButton onPick={send.photo} disabled={send.busy}>
@@ -566,7 +567,7 @@ function Welcome({
 }
 
 // Hichki back: the away person thought of you, by name.
-function HichkiBack({ moment }: { moment: Hichki | null }) {
+export function HichkiBack({ moment }: { moment: Hichki | null }) {
   const [show, setShow] = useState<Hichki | null>(null);
   useEffect(() => {
     if (!moment) return;
@@ -583,7 +584,10 @@ function HichkiBack({ moment }: { moment: Hichki | null }) {
         <p className="hichki-line" lang="hi">
           {show.from} ने याद किया
         </p>
-        <p className="muted">{show.from} thought of you, just now</p>
+        <p className="muted">
+          {show.toAll ? `${show.from} is thinking of you all` : `${show.from} thought of you, just now`}
+          {show.note ? <>, <em>{show.note}</em></> : null}
+        </p>
       </div>
     </div>
   );
@@ -623,6 +627,7 @@ function StoryRequestCard({ request, proofs, api: roomApi, away, me }: { request
           {request.textOriginal}
         </p>
       )}
+      <HearAsk request={request} away={away} />
       <label className="field">
         <span>Who is telling it?</span>
         <input value={teller} onChange={(e) => { setTeller(e.target.value); setError(''); }} placeholder="Dadi" maxLength={40} />
@@ -644,5 +649,16 @@ function StoryRequestCard({ request, proofs, api: roomApi, away, me }: { request
         {proofs.length === 0 ? 'Hand the phone to whoever is telling it. Any language works.' : `${proofs.length} told so far${mine ? `, ${mine} from you` : ''}. ${away} picks one.`}
       </p>
     </article>
+  );
+}
+
+// Hear Meera ask: her own voice, when she spoke the request.
+function HearAsk({ request, away }: { request: Req; away: string }) {
+  if (!request.audioUrl) return null;
+  return (
+    <div className="hear-ask">
+      <p className="eyebrow">Hear {away} ask</p>
+      <audio src={request.audioUrl} controls preload="none" />
+    </div>
   );
 }

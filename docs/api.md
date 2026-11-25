@@ -134,7 +134,7 @@ A request is one card in the room.
 }
 ```
 
-A letter needs `audioFile` or `text`, and `openWhen` or `unlockAt`. Letters return 409 while the `jab_kholna` flag is off.
+See and do requests can carry `audioFile` too (the away person's spoken request), so guests can hear them ask. A letter needs `audioFile` or `text`, and `openWhen` or `unlockAt`. Letters return 409 while the `jab_kholna` flag is off.
 
 **Story requests** (`kind: "story"`) are answered by recording: send an audio `file` and a `teller` ("Dadi") to `POST /api/requests/:rid/proofs`. The recording also becomes a story (with `requestId` set), transcribed and translated like any other. `draft` returns `kind: "story"` when someone asks for a story or a memory.
 
@@ -233,6 +233,7 @@ Phones that were closed miss events. When a page becomes visible again, fetch th
 | `POST /api/gatherings/:id/duty` | away | `{ until, note? }`, or `{ until: null }` to come off duty | `{ gathering }`. Up to three days ahead. While on duty, hichkis are stored but not sent to the away person. |
 | `POST /api/gatherings/:id/seen` | away | | `{ ok }`. The away person has read the catch-up. |
 | `POST /api/gatherings/:id/away-tz` | away | `{ tz }` (IANA, e.g. `America/Toronto`) | `{ ok }`. Sent by the away person's phone, so the room can show their clock. |
+| `POST /api/gatherings/:id/hichki-room` | away | `{ note? }` | `{ ok }`. A hichki to everyone: guests' and the host's phones get `hichki:room` `{ from, note, at }`. |
 | `POST /api/gatherings/:id/hichki-back` | away | `{ memberId }` | `{ ok }`. That guest's phones get `hichki:back` `{ from, at }`. Same 3 second cooldown per guest. |
 
 `gathering` now carries `awayTz` and `duty` (`{ from, until, note }` while on duty, else `null`). The away person's feed carries `catchUp`: `{ since, wasOnDuty, dutyNote, hichkis, answered, stories }`, everything since their last visit or the start of their last duty, or `null` when there's nothing new or they're still on duty. `hichki:sent` carries `held: true` when the away person is on duty.

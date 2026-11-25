@@ -58,6 +58,11 @@ export function emitAll(gatheringId: string, event: string, payload: unknown) {
   io.to(roomOf(gatheringId)).to(awayOf(gatheringId)).emit(event, payload);
 }
 
+// Guests and the host only.
+export function emitRoom(gatheringId: string, event: string, payload: unknown) {
+  io.to(roomOf(gatheringId)).emit(event, payload);
+}
+
 export function emitAway(gatheringId: string, event: string, payload: unknown) {
   io.to(awayOf(gatheringId)).emit(event, payload);
 }

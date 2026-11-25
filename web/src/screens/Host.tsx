@@ -4,6 +4,7 @@ import { api, getKeepsake, publicBaseUrl, saved, type PublicGathering, type Room
 import { useRoom } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
 import { AwayClock, DutyBanner } from '../duty.tsx';
+import { HichkiBack } from './Guest.tsx';
 import { HichkiButton, HichkiTimeline, Leaderboard } from '../parts.tsx';
 
 export function Host({ id, token: urlToken }: { id: string; token: string }) {
@@ -83,6 +84,7 @@ export function Host({ id, token: urlToken }: { id: string; token: string }) {
       </section>
 
       <DutyBanner gathering={room.feed?.gathering ?? gathering} />
+      <HichkiBack moment={room.hichkiBack} />
 
       {room.api && room.feed?.flags.hichki && <HichkiButton api={room.api} awayName={gathering.awayName} />}
       {room.feed && <HichkiTimeline entries={room.feed.hichkis ?? []} awayName={gathering.awayName} limit={3} />}

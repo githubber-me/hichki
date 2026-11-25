@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { roomApi, type Feed, type Flags, type PackItem, type Presence, type Proof, type PublicGathering, type Req, type Story, type Who } from './api.ts';
 
-export type Hichki = { from: string; at: number; note?: string | null; memberId?: string | null; held?: boolean };
+export type Hichki = { from: string; at: number; note?: string | null; memberId?: string | null; held?: boolean; toAll?: boolean };
 export type Accepted = { requestId: string; proofId: string; memberId: string; memberName: string; points: number };
 
 export function useRoom(id: string, who: Who | null) {
@@ -79,6 +79,8 @@ export function useRoom(id: string, who: Who | null) {
       patch((f) => ({ ...f, hichkis: [{ from: h.from, memberId: h.memberId ?? null, note: h.note ?? null, at: h.at }, ...(f.hichkis ?? [])] }));
     });
     socket.on('hichki:back', setHichkiBack);
+    // The away person thought of everyone: shown like a hichki back, to the whole room.
+    socket.on('hichki:room', (h: Hichki) => setHichkiBack({ ...h, toAll: true }));
     socket.on('thanks', setThanks);
 
     // A phone that was closed missed events, so fetch everything again when it comes back.
