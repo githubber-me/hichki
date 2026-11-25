@@ -46,7 +46,7 @@ She wasn't there. But she was part of it.
 
 **If you're at the gathering,** you scan the QR code and type your name. There's no app to download and no account to make.
 
-**If you'd rather know exactly who's in,** turn on *Only verified guests*. Everyone then signs in with Google or their phone number, so nobody can join under someone else's name. The host can remove anyone, at any time.
+**If you'd rather know exactly who's in,** turn on *Only verified guests*. Everyone then signs in with Google or their phone number, so nobody can join under someone else's name. The host can remove anyone, at any time, and everyone can change their name or photo whenever they like.
 
 **If you couldn't come,** you open your link and talk. That's it.
 

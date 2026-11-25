@@ -173,6 +173,8 @@ export function roomApi(id: string, who: Who) {
     hichki: () => call<{ ok: true }>('POST', `${g}/hichki`),
     // The host says the celebration is over, or reopens it.
     wrap: (wrapped: boolean) => call<{ gathering: PublicGathering }>('POST', `${g}/wrap`, { wrapped }),
+    // Guest only: change your name, or your photo (an uploaded file, or null to remove it).
+    updateMe: (changes: { name?: string; photo?: string | null }) => call<{ member: Member }>('POST', `${g}/me`, changes),
     // Host only.
     removeMember: (memberId: string) => call<{ ok: true }>('DELETE', `${g}/members/${memberId}`),
     setVerified: (verified: boolean) => call<{ gathering: PublicGathering }>('POST', `${g}/verified`, { verified }),

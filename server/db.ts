@@ -242,14 +242,14 @@ export function joinGathering(
 ): Member {
   const existing = auth ? memberByAuthUser(gatheringId, auth.userId) : memberByDevice(gatheringId, deviceId);
 
+  if (existing && auth) {
+    // A signed-in guest on another phone: keep the name and photo they chose.
+    db.prepare('UPDATE members SET device_id = ? WHERE id = ?').run(deviceId, existing.id);
+    return { ...existing, device_id: deviceId };
+  }
   if (existing) {
-    db.prepare('UPDATE members SET name = ?, device_id = ?, avatar_url = COALESCE(?, avatar_url) WHERE id = ?').run(
-      name,
-      deviceId,
-      auth?.avatarUrl ?? null,
-      existing.id,
-    );
-    return { ...existing, name, device_id: deviceId, avatar_url: auth?.avatarUrl ?? existing.avatar_url };
+    db.prepare('UPDATE members SET name = ? WHERE id = ?').run(name, existing.id);
+    return { ...existing, name };
   }
 
   const member: Member = {
@@ -271,6 +271,11 @@ export function joinGathering(
     member.auth_user_id, member.avatar_url,
   );
   return member;
+}
+
+// A guest changes how they appear: their name, and their photo (a URL, or null for none).
+export function updateProfile(id: string, name: string, avatarUrl: string | null) {
+  db.prepare('UPDATE members SET name = ?, avatar_url = ? WHERE id = ?').run(name, avatarUrl, id);
 }
 
 export function removeMember(id: string) {

@@ -198,7 +198,12 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
       )}
 
       {tab === 'stories' && <Stories api={roomApi} stories={feed.stories} />}
-      {tab === 'people' && <MemberList presence={feed.presence} me={member.id} />}
+      {tab === 'people' && (
+        <>
+          <Profile api={roomApi} gatheringId={gathering.id} me={feed.presence.members.find((m) => m.id === member.id) ?? member} />
+          <MemberList presence={feed.presence} me={member.id} />
+        </>
+      )}
 
       <Tabs<Tab>
         tabs={[
@@ -334,4 +339,98 @@ function useSend(roomApi: RoomApi, requestId: string) {
     photo: (file: File) => run(() => uploadPhoto(roomApi, file)),
     voice: (blob: Blob) => run(() => uploadRecording(roomApi, blob)),
   };
+}
+
+// How you appear to everyone: your name and photo. Quiet by default, one tap to change.
+// Signed-in guests can change these too; their account stays verified either way.
+function Profile({ api: roomApi, gatheringId, me }: { api: RoomApi; gatheringId: string; me: Member }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(me.name);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function save(changes: { name?: string; photo?: string | null }) {
+    setBusy(true);
+    setError('');
+    try {
+      const { member } = await roomApi.updateMe(changes);
+      saved.setMember(gatheringId, member);
+      if (changes.name !== undefined) setOpen(false);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+    setBusy(false);
+  }
+
+  async function pickPhoto(file: File | undefined) {
+    if (!file) return;
+    setBusy(true);
+    setError('');
+    try {
+      const stored = await uploadPhoto(roomApi, file);
+      await save({ photo: stored.file });
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="profile">
+      <div className="profile-row">
+        {me.avatarUrl ? (
+          <img className="profile-photo" src={me.avatarUrl} alt="" referrerPolicy="no-referrer" />
+        ) : (
+          <span className="profile-photo profile-initial" aria-hidden="true">
+            {me.name.slice(0, 1).toUpperCase()}
+          </span>
+        )}
+        <span className="profile-name">
+          {me.name}
+          {me.verified && <span className="badge badge-verified">verified</span>}
+        </span>
+        {!open && (
+          <button type="button" className="btn btn-quiet btn-small" onClick={() => { setName(me.name); setOpen(true); }}>
+            Edit
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <form
+          className="profile-edit"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!name.trim()) return setError('Your name can\u2019t be empty.');
+            save({ name });
+          }}
+        >
+          <label className="field">
+            <span>Your name</span>
+            <input value={name} onChange={(e) => { setName(e.target.value); setError(''); }} maxLength={40} />
+          </label>
+          <div className="profile-actions">
+            <label className="btn btn-quiet btn-small">
+              {me.avatarUrl ? 'Change photo' : 'Add a photo'}
+              <input type="file" accept="image/*" hidden onChange={(e) => pickPhoto(e.target.files?.[0])} />
+            </label>
+            {me.avatarUrl && (
+              <button type="button" className="btn btn-quiet btn-small" disabled={busy} onClick={() => save({ photo: null })}>
+                Remove photo
+              </button>
+            )}
+          </div>
+          {error && <p className="error">{error}</p>}
+          <div className="profile-actions">
+            <button className="btn btn-primary btn-small" disabled={busy}>
+              {busy ? 'Saving\u2026' : 'Save'}
+            </button>
+            <button type="button" className="btn btn-quiet btn-small" onClick={() => { setOpen(false); setError(''); }}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </section>
+  );
 }

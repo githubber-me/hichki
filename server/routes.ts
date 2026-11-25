@@ -38,9 +38,10 @@ import {
   memberByDevice,
   memberWithName,
   removeMember,
+  updateProfile,
   setVerified,
 } from './db.ts';
-import { isOwnFile, mediaOf, saveUpload, UploadError } from './files.ts';
+import { isOwnFile, mediaOf, mediaUrl, saveUpload, UploadError } from './files.ts';
 import { flagStatus, flags, requestMode, trackFulfilled } from './flags.ts';
 import { broadcastPresence, disconnectMember, emitAll, emitAway, onlineMemberIds, presence, publishRequest } from './live.ts';
 import { sarvamEnabled, SarvamError, toCard, transcribe, translate } from './sarvam.ts';
@@ -258,6 +259,34 @@ app.delete('/api/gatherings/:id/members/:mid', async (req) => {
   disconnectMember(g.id, member.id);
   broadcastPresence(g.id);
   return { ok: true };
+});
+
+// A guest changes their own name or photo. Signed-in guests can too: their account
+// stays verified, they just choose how they appear. Names stay unique.
+//   name:   new name (optional)
+//   photo:  an uploaded photo's "file", or null to remove the photo (optional)
+app.post('/api/gatherings/:id/me', async (req) => {
+  const g = findGathering((req.params as { id: string }).id);
+  const c = requireCaller(req, g, 'guest');
+  if (c.role !== 'guest') throw new HttpError(403, 'Join the gathering first.');
+  const body = (req.body ?? {}) as Record<string, unknown>;
+
+  const name = body.name === undefined ? c.member.name : clean(body.name, 40);
+  if (!name) throw new HttpError(400, 'Your name can\u2019t be empty.');
+  const clash = memberWithName(g.id, name, c.member.id);
+  if (clash) throw new HttpError(409, `${clash.name} has already joined. Add a surname or an initial.`);
+
+  let avatarUrl = c.member.avatar_url;
+  if (body.photo === null) avatarUrl = null;
+  else if (body.photo !== undefined) {
+    if (!isOwnFile(g.id, body.photo) || mediaOf(body.photo) !== 'photo') throw new HttpError(400, 'Choose a photo.');
+    avatarUrl = mediaUrl(body.photo);
+  }
+
+  updateProfile(c.member.id, name, avatarUrl);
+  req.log.info({ event: 'profile_updated', gatheringId: g.id, memberId: c.member.id }, 'profile updated');
+  broadcastPresence(g.id);
+  return { member: { id: c.member.id, name, points: c.member.points, avatarUrl, verified: !!c.member.auth_user_id } };
 });
 
 // The host turns verified guests on or off. People already in stay in.
