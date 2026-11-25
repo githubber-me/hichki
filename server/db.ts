@@ -128,6 +128,10 @@ for (const [column, type] of [
   if (!gatheringColumns.some((c) => c.name === column)) db.exec(`ALTER TABLE gatherings ADD COLUMN ${column} ${type}`);
 }
 
+// A hichki can carry a short line: "I thought of you when Dadi started singing".
+const hichkiColumns = db.prepare('PRAGMA table_info(hichkis)').all() as { name: string }[];
+if (!hichkiColumns.some((c) => c.name === 'note')) db.exec('ALTER TABLE hichkis ADD COLUMN note TEXT');
+
 // A story told in answer to a request ("Ask Dadi about her wedding day") is linked to it.
 const storyColumns = db.prepare('PRAGMA table_info(stories)').all() as { name: string }[];
 if (!storyColumns.some((c) => c.name === 'request_id')) db.exec('ALTER TABLE stories ADD COLUMN request_id TEXT');
@@ -584,15 +588,23 @@ export function listStories(gatheringId: string): StoryRow[] {
 // Hichkis
 // ---------------------------------------------------------------------------
 
-export type HichkiRow = { id: number; gathering_id: string; member_id: string | null; from_name: string; created_at: number };
+export type HichkiRow = { id: number; gathering_id: string; member_id: string | null; from_name: string; created_at: number; note: string | null };
 
-export function addHichki(gatheringId: string, memberId: string | null, fromName: string, at = Date.now()) {
-  db.prepare('INSERT INTO hichkis (gathering_id, member_id, from_name, created_at) VALUES (?, ?, ?, ?)').run(
+export function addHichki(gatheringId: string, memberId: string | null, fromName: string, at = Date.now(), note: string | null = null) {
+  db.prepare('INSERT INTO hichkis (gathering_id, member_id, from_name, created_at, note) VALUES (?, ?, ?, ?, ?)').run(
     gatheringId,
     memberId,
     fromName,
     at,
+    note,
   );
+}
+
+// The latest hichkis, newest first, for the timeline in the room.
+export function recentHichkis(gatheringId: string, limit = 60): HichkiRow[] {
+  return db
+    .prepare('SELECT * FROM hichkis WHERE gathering_id = ? ORDER BY created_at DESC LIMIT ?')
+    .all(gatheringId, limit) as HichkiRow[];
 }
 
 export function listHichkisSince(gatheringId: string, since: number): HichkiRow[] {

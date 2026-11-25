@@ -5,7 +5,7 @@ import { MemberList } from './MemberList.tsx';
 import { CatchUpCard, DutyControl } from '../duty.tsx';
 import { ThanksComposer, ThanksView } from '../thanks.tsx';
 import { Yaadein } from './Yaadein.tsx';
-import { StoryWords, Leaderboard, MicIcon, ProofView, RecordButton, Stories, Tabs, ago, clock, uploadRecording } from '../parts.tsx';
+import { HichkiTimeline, StoryWords, Leaderboard, MicIcon, ProofView, RecordButton, Stories, Tabs, ago, clock, uploadRecording } from '../parts.tsx';
 
 type Tab = 'ask' | 'letters' | 'people';
 
@@ -68,6 +68,7 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
 
       <HichkiMoment hichki={room.hichki} />
       {feed.catchUp && !caughtUp && <CatchUpCard api={api} feed={feed} catchUp={feed.catchUp} onDone={() => setCaughtUp(true)} />}
+      {tab === 'ask' && <HichkiTimeline entries={feed.hichkis ?? []} awayName="you" limit={3} />}
 
       {tab === 'ask' && (
         <>
@@ -109,7 +110,9 @@ function HichkiMoment({ hichki }: { hichki: Hichki | null }) {
         <p className="hichki-line" lang="hi">
           किसी ने याद किया
         </p>
-        <p className="muted">{show.from} thought of you, just now</p>
+        <p className="muted">
+          {show.from} thought of you, just now{show.note ? <>, <em>{show.note}</em></> : null}
+        </p>
       </div>
     </div>
   );

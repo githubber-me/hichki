@@ -46,6 +46,7 @@ import {
   setAwayTz,
   setThanks,
   listHichkisSince,
+  recentHichkis,
 } from './db.ts';
 import { isOwnFile, mediaOf, mediaUrl, saveUpload, UploadError } from './files.ts';
 import { flagStatus, flags, packs, requestMode, trackFulfilled } from './flags.ts';
@@ -325,6 +326,8 @@ app.get('/api/gatherings/:id/feed', async (req) => {
     flags: flags(),
     // Ready-made requests for this occasion (away person only).
     packs: c.role === 'away' ? packFor(packs(), g.occasion) : [],
+    // The hichki timeline, newest first: who remembered, when, and their line if any.
+    hichkis: recentHichkis(g.id).map((h) => ({ from: h.from_name, memberId: h.member_id, note: h.note, at: h.created_at })),
     // "While you were away" for the away person (null when there's nothing to show).
     catchUp: c.role === 'away' ? catchUp(g) : null,
     presence: presence(g.id),
@@ -600,8 +603,10 @@ app.post('/api/gatherings/:id/hichki', async (req) => {
   lastHichki.set(who, Date.now());
 
   const from = c.role === 'guest' ? c.member.name : 'The host';
-  const payload = { from, at: Date.now() };
-  addHichki(g.id, c.role === 'guest' ? c.member.id : null, from, payload.at);
+  // Optional: when it happened. "when Dadi started singing".
+  const note = clean(((req.body ?? {}) as Record<string, unknown>).note, 120) || null;
+  const payload = { from, memberId: c.role === 'guest' ? c.member.id : null, note, at: Date.now() };
+  addHichki(g.id, payload.memberId, from, payload.at, note);
   // Duty pe: while the away person is on duty, hichkis are kept for later, not buzzed.
   const held = onDuty(g);
   req.log.info({ event: 'hichki', gatheringId: g.id, held }, 'hichki sent');
@@ -621,7 +626,7 @@ function catchUp(g: Gathering) {
   const marks = [g.away_seen_at, g.duty_from].filter((t): t is number => !!t);
   if (marks.length === 0) return null;
   const since = Math.min(...marks);
-  const hichkis = listHichkisSince(g.id, since).map((h) => ({ from: h.from_name, memberId: h.member_id, at: h.created_at }));
+  const hichkis = listHichkisSince(g.id, since).map((h) => ({ from: h.from_name, memberId: h.member_id, note: h.note, at: h.created_at }));
   const answered = listRequests(g.id).filter((r) => (r.status === 'done' || r.status === 'unlocked') && (r.fulfilled_at ?? 0) > since);
   const stories = listStories(g.id).filter((s) => s.created_at > since);
   if (hichkis.length === 0 && answered.length === 0 && stories.length === 0) return null;
@@ -737,7 +742,7 @@ app.get('/api/gatherings/:id/keepsake', async (req) => {
       .filter((r) => r !== null),
     proofs: listProofs(g.id).map((p) => proofView(p, names.get(p.member_id) ?? 'Someone')),
     stories: listStories(g.id).map(storyView),
-    hichkis: listHichkis(g.id).map((h) => ({ from: h.from_name, memberId: h.member_id, at: h.created_at })),
+    hichkis: listHichkis(g.id).map((h) => ({ from: h.from_name, memberId: h.member_id, note: h.note, at: h.created_at })),
     now: Date.now(),
   };
 });

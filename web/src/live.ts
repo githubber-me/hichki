@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { roomApi, type Feed, type Flags, type PackItem, type Presence, type Proof, type PublicGathering, type Req, type Story, type Who } from './api.ts';
 
-export type Hichki = { from: string; at: number };
+export type Hichki = { from: string; at: number; note?: string | null; memberId?: string | null; held?: boolean };
 export type Accepted = { requestId: string; proofId: string; memberId: string; memberName: string; points: number };
 
 export function useRoom(id: string, who: Who | null) {
@@ -73,7 +73,11 @@ export function useRoom(id: string, who: Who | null) {
     socket.on('story', (s: Story) => patch((f) => ({ ...f, stories: upsert(f.stories, s) })));
     socket.on('accepted', setAccepted);
     socket.on('hichki', setHichki);
-    socket.on('hichki:sent', setHichkiSent);
+    socket.on('hichki:sent', (h: Hichki) => {
+      setHichkiSent(h);
+      // Add it to the top of the timeline everyone sees.
+      patch((f) => ({ ...f, hichkis: [{ from: h.from, memberId: h.memberId ?? null, note: h.note ?? null, at: h.at }, ...(f.hichkis ?? [])] }));
+    });
     socket.on('hichki:back', setHichkiBack);
     socket.on('thanks', setThanks);
 

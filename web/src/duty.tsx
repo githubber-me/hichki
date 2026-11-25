@@ -159,6 +159,14 @@ export function CatchUpCard({ api, feed, catchUp, onDone }: { api: RoomApi; feed
               {people.length === 1 ? people[0] : `${people.length} people`} thought of you{n > 1 ? `, ${n} times` : ''}.
             </p>
             {people.length > 1 && <p className="muted">{people.join(', ')}</p>}
+            {catchUp.hichkis
+              .filter((h) => h.note)
+              .slice(0, 3)
+              .map((h) => (
+                <p key={h.at} className="muted small">
+                  {h.from}: <em>{h.note}</em>
+                </p>
+              ))}
           </div>
         </div>
       )}

@@ -105,10 +105,13 @@ export type CatchUp = {
   since: number;
   wasOnDuty: boolean;
   dutyNote: string | null;
-  hichkis: { from: string; memberId: string | null; at: number }[];
+  hichkis: { from: string; memberId: string | null; note?: string | null; at: number }[];
   answered: string[]; // request ids
   stories: string[]; // story ids
 };
+
+// One hichki in the timeline: who remembered, when, and the line they added, if any.
+export type HichkiEntry = { from: string; memberId: string | null; note: string | null; at: number };
 
 // A ready-made request idea for the occasion (from Flagsmith's `request_packs`).
 export type PackItem = { kind: 'see' | 'do' | 'story'; text: string };
@@ -119,6 +122,7 @@ export type Feed = {
   me: Member | null;
   flags: Flags;
   packs: PackItem[];
+  hichkis: HichkiEntry[]; // newest first
   // "While you were away" (away person only; null when there's nothing new).
   catchUp: CatchUp | null;
   presence: Presence;
@@ -190,7 +194,7 @@ export function roomApi(id: string, who: Who) {
     sendProof: (rid: string, file: string, caption?: string, extra: { teller?: string } = {}) =>
       call<{ proof: Proof }>('POST', `/api/requests/${rid}/proofs`, { file, caption, ...extra }),
     accept: (rid: string, proofId: string) => call<{ request: Req }>('POST', `/api/requests/${rid}/accept`, { proofId }),
-    hichki: () => call<{ ok: true }>('POST', `${g}/hichki`),
+    hichki: (note?: string) => call<{ ok: true }>('POST', `${g}/hichki`, note ? { note } : {}),
     // The host says the celebration is over, or reopens it.
     wrap: (wrapped: boolean) => call<{ gathering: PublicGathering }>('POST', `${g}/wrap`, { wrapped }),
     // Guest only: change your name, or your photo (an uploaded file, or null to remove it).

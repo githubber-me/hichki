@@ -5,7 +5,7 @@ import { MemberList } from './MemberList.tsx';
 import { AwayClock, DutyBanner } from '../duty.tsx';
 import { ThanksView } from '../thanks.tsx';
 import type { Hichki } from '../live.ts';
-import { StoryWords, HichkiButton, Leaderboard, MicIcon, PhotoButton, ProofView, RecordButton, Stories, Tabs, clock, uploadPhoto, uploadRecording } from '../parts.tsx';
+import { StoryWords, HichkiButton, HichkiTimeline, Leaderboard, MicIcon, PhotoButton, ProofView, RecordButton, Stories, Tabs, clock, uploadPhoto, uploadRecording } from '../parts.tsx';
 
 // What the QR code opens. First visit asks for a name; after that the phone remembers.
 export function Guest({ id }: { id: string }) {
@@ -169,6 +169,9 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
 
       {tab === 'room' && (
         <>
+          {/* Hichki is the heart of it, so it always sits at the top, with everyone's hichkis below. */}
+          {feed.flags.hichki && <HichkiButton api={roomApi} awayName={away} />}
+          <HichkiTimeline entries={feed.hichkis ?? []} awayName={away} me={member.id} limit={3} />
           {room.accepted && (
             <p className="banner celebrate" role="status">
               {away} picked {room.accepted.memberId === member.id ? 'yours' : `${room.accepted.memberName}’s`}. +10
@@ -201,7 +204,6 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
           {feed.flags.jab_kholna &&
             letters.map((r) => <LetterCard key={r.id} letter={r} proofs={proofsFor(r)} api={roomApi} away={away} me={member.id} />)}
 
-          {feed.flags.hichki && <HichkiButton api={roomApi} awayName={away} />}
           {room.hichkiSent && <p className="muted note">{room.hichkiSent.from} sent a hichki at {clock(room.hichkiSent.at)}.</p>}
 
           <Leaderboard presence={feed.presence} me={member.id} limit={5} />

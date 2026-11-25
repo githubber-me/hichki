@@ -638,3 +638,20 @@ a.btn, a.banner { text-decoration: none; }
 .camera-shutter:active { transform: scale(0.94); }
 .camera-shutter:disabled { opacity: 0.4; }
 .camera-close { position: absolute; top: calc(12px + env(safe-area-inset-top)); right: 14px; width: 42px; height: 42px; border-radius: 50%; border: 0; font-size: 28px; line-height: 1; color: var(--rice); background: rgba(18, 8, 6, 0.55); cursor: pointer; }
+
+/* ---------- Hichki note and timeline ---------- */
+.hichki-note { display: grid; gap: 4px; width: min(320px, 100%); margin: 6px auto 0; text-align: left; }
+.hichki-note > span { font-size: 11.5px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--rice-soft); }
+.hichki-note input { font: inherit; font-size: 16px; color: var(--rice); background: transparent; border: 0; border-bottom: 1.5px solid var(--rice-faint); padding: 6px 2px; }
+.hichki-note input::placeholder { color: var(--rice-faint); font-style: italic; }
+.hichki-note input:focus { outline: none; border-bottom-color: var(--haldi); }
+.hichki-timeline { display: grid; gap: 10px; }
+.hichki-timeline h2 { margin: 0; font-size: 17px; }
+.hichki-timeline ol { list-style: none; margin: 0; padding: 0 0 0 6px; display: grid; gap: 0; border-left: 2px dotted var(--rice-faint); }
+.hichki-timeline li { position: relative; display: flex; align-items: baseline; gap: 10px; padding: 7px 0 7px 16px; }
+.hichki-timeline .tl-dot { position: absolute; left: -7px; top: 13px; width: 12px; height: 12px; border-radius: 50%; background: var(--haldi); box-shadow: 0 0 0 3px var(--wall); }
+.hichki-timeline li p { margin: 0; flex: 1; font-size: 15.5px; line-height: 1.35; color: var(--rice-soft); }
+.hichki-timeline li b { color: var(--rice); font-weight: 600; }
+.hichki-timeline li em { color: var(--haldi); font-style: italic; }
+.hichki-timeline time { flex: none; font-size: 12.5px; color: var(--rice-faint); }
+.hichki-timeline .btn { justify-self: start; }

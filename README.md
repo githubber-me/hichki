@@ -34,7 +34,7 @@ She wasn't there. But she was part of it.
 
 Not sure what to ask? There are ideas ready for every occasion, one tap away: *"Send me a photo of the mehendi on the bride's hands."* On a trip: *"Send me a group photo, and leave a gap for me."*
 
-**Hichki** (hiccup). Anyone at the gathering can tap one button to let you know you were just thought of. In India, people say a hiccup means someone is remembering you. Now it's real. And it goes both ways: you can send a hichki back to one person, by name.
+**Hichki** (hiccup). Anyone at the gathering can tap one button to let you know you were just thought of. In India, people say a hiccup means someone is remembering you. Now it's real. You can add when it happened, *"when Dadi started singing"*, and every hichki lands on a little timeline everyone can see. And it goes both ways: you can send a hichki back to one person, by name.
 
 **Jab kholna** (open when). Record voice letters ahead of time that stay locked until a moment happens. "Open when the cake is cut." "Open when Dadi starts crying." The room unlocks it by showing that the moment came.
 

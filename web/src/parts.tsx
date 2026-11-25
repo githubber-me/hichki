@@ -3,7 +3,7 @@
 
 import { Camera } from './camera.tsx';
 import { useState, type ReactNode } from 'react';
-import type { Presence, Proof, RoomApi, Story } from './api.ts';
+import type { HichkiEntry, Presence, Proof, RoomApi, Story } from './api.ts';
 import { recordingName, shrinkPhoto, useRecorder } from './recorder.ts';
 
 // "4:12 pm" for today, "Fri 4:12 pm" for another day.
@@ -106,14 +106,16 @@ export function uploadRecording(api: RoomApi, blob: Blob) {
 // One tap tells the person who couldn't come that someone just thought of them.
 export function HichkiButton({ api, awayName }: { api: RoomApi; awayName: string }) {
   const [taps, setTaps] = useState(0);
+  const [note, setNote] = useState('');
   const [message, setMessage] = useState('');
 
   async function tap() {
     setTaps((n) => n + 1);
     navigator.vibrate?.(30);
     try {
-      await api.hichki();
-      setMessage(`Sent. ${awayName}’s phone just buzzed.`);
+      await api.hichki(note.trim() || undefined);
+      setMessage(`Sent. ${awayName}\u2019s phone just buzzed.`);
+      setNote('');
     } catch (e) {
       setMessage((e as Error).message);
     }
@@ -130,9 +132,50 @@ export function HichkiButton({ api, awayName }: { api: RoomApi; awayName: string
         </span>
       </button>
       <p className="hichki-hint" aria-live="polite">
-        {message || `Tap when you think of ${awayName}. They’ll know they were remembered.`}
+        {message || `Tap when you think of ${awayName}. They\u2019ll know they were remembered.`}
       </p>
+      <label className="hichki-note">
+        <span>Add when (optional)</span>
+        <input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && tap()}
+          maxLength={120}
+          placeholder="when Dadi started singing"
+        />
+      </label>
     </div>
+  );
+}
+
+// The hichki timeline: every time someone remembered the away person, newest first.
+export function HichkiTimeline({ entries, awayName, me, limit = 5 }: { entries: HichkiEntry[]; awayName: string; me?: string; limit?: number }) {
+  const [all, setAll] = useState(false);
+  if (entries.length === 0) return null;
+  const shown = all ? entries : entries.slice(0, limit);
+  return (
+    <section className="hichki-timeline">
+      <h2>
+        Remembered {entries.length} {entries.length === 1 ? 'time' : 'times'}
+      </h2>
+      <ol>
+        {shown.map((h, i) => (
+          <li key={`${h.at}-${i}`}>
+            <span className="tl-dot" aria-hidden="true" />
+            <p>
+              <b>{h.memberId && h.memberId === me ? 'You' : h.from}</b> thought of {awayName}
+              {h.note ? <> {h.note.startsWith('when') || h.note.startsWith('while') ? '' : '\u00b7 '}<em>{h.note}</em></> : null}
+            </p>
+            <time dateTime={new Date(h.at).toISOString()}>{clock(h.at)}</time>
+          </li>
+        ))}
+      </ol>
+      {entries.length > limit && (
+        <button type="button" className="btn btn-quiet btn-small" onClick={() => setAll((a) => !a)}>
+          {all ? 'Show fewer' : `Show all ${entries.length}`}
+        </button>
+      )}
+    </section>
   );
 }
 

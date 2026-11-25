@@ -142,7 +142,7 @@ A letter needs `audioFile` or `text`, and `openWhen` or `unlockAt`. Letters retu
 
 ## Hichki
 
-`POST /api/gatherings/:id/hichki` (guest or host), no body. Returns `{ ok: true }`.
+`POST /api/gatherings/:id/hichki` (guest or host), optional body `{ note }` (up to 120 characters, e.g. "when Dadi started singing"). Returns `{ ok: true }`. The feed carries `hichkis`, the timeline newest first: `[{ from, memberId, note, at }]`, and `hichki` and `hichki:sent` events carry `note` and `memberId`.
 
 - 409 while the `hichki` flag is off.
 - 429 if the same person taps again within 3 seconds. The message can be shown as is.

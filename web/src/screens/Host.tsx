@@ -4,7 +4,7 @@ import { api, getKeepsake, publicBaseUrl, saved, type PublicGathering, type Room
 import { useRoom } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
 import { AwayClock, DutyBanner } from '../duty.tsx';
-import { HichkiButton, Leaderboard } from '../parts.tsx';
+import { HichkiButton, HichkiTimeline, Leaderboard } from '../parts.tsx';
 
 export function Host({ id, token: urlToken }: { id: string; token: string }) {
   const token = urlToken || saved.hostToken(id) || '';
@@ -85,6 +85,7 @@ export function Host({ id, token: urlToken }: { id: string; token: string }) {
       <DutyBanner gathering={room.feed?.gathering ?? gathering} />
 
       {room.api && room.feed?.flags.hichki && <HichkiButton api={room.api} awayName={gathering.awayName} />}
+      {room.feed && <HichkiTimeline entries={room.feed.hichkis ?? []} awayName={gathering.awayName} limit={3} />}
       {presence && <Leaderboard presence={presence} limit={5} />}
       {room.api && <VerifiedSwitch api={room.api} gathering={room.feed?.gathering ?? gathering} />}
       <MemberList presence={presence} onRemove={room.api ? async (mid) => void (await room.api!.removeMember(mid)) : undefined} />
