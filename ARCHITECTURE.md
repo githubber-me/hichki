@@ -113,6 +113,17 @@ The server uses the Node SDK (`@flagsmith/nodejs`) with local evaluation, refres
 
 The NudgeBee agent runs in the cluster and reads Kubernetes events, pod status, logs and metrics. The app helps it by writing structured JSON logs, setting resource requests and limits, and exposing health checks. To show it working, we break the app on purpose and ask NudgeBee to find the cause.
 
+Breaking it is one switch, the `BREAK` environment variable ([server/faults.ts](server/faults.ts)), set on the cluster by `deploy/break.sh` and removed by `deploy/fix.sh`. Both faults are real failures, not fake log lines:
+
+| `BREAK` | What happens | What NudgeBee should find |
+| --- | --- | --- |
+| `uploads` | The uploads folder is made read-only | Uploads return HTTP 500; logs show `EACCES` on the volume |
+| `memory` | The server keeps allocating memory it never frees | The pod passes its 512Mi limit, is OOMKilled and restarts in a loop |
+
+## Deployment
+
+One Docker image ([Dockerfile](Dockerfile)) holds the server and the built web page. [deploy/deploy.sh](deploy/deploy.sh) builds it, loads it into a local kind cluster ([deploy/kind.yaml](deploy/kind.yaml)) and applies [deploy/k8s/app.yaml](deploy/k8s/app.yaml): a namespace, a config map, a 2 GiB volume, one pod (replaced, never doubled, because it owns the SQLite file) and a NodePort on `localhost:8088`. Phones reach it over HTTPS through a Cloudflare quick tunnel ([deploy/tunnel.sh](deploy/tunnel.sh)).
+
 ## API
 
 Every route and live event the web page uses is in [docs/api.md](docs/api.md).

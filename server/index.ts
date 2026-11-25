@@ -6,6 +6,7 @@ import fastifyMultipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import { app, io, log } from './app.ts';
 import { config } from './config.ts';
+import { applyFaults } from './faults.ts';
 import { uploadsDir } from './files.ts';
 import { startFlags, stopFlags } from './flags.ts';
 import { startScheduler, stopScheduler } from './scheduler.ts';
@@ -39,6 +40,7 @@ if (existsSync(webRoot)) {
   });
 }
 
+applyFaults();
 await startFlags();
 startScheduler();
 await app.listen({ port: config.port, host: '0.0.0.0' });

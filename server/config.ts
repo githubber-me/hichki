@@ -16,6 +16,8 @@ export const config = {
   dataDir: process.env.DATA_DIR ?? './data',
   logLevel: process.env.LOG_LEVEL ?? 'info',
   maxUploadMb: Number(process.env.MAX_UPLOAD_MB ?? 10),
+  // Break the app on purpose for the NudgeBee demo: "uploads" or "memory". See server/faults.ts.
+  break: (process.env.BREAK ?? '').trim(),
 
   sarvam: {
     apiKey: process.env.SARVAM_API_KEY ?? '',
