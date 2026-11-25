@@ -4,6 +4,7 @@ import { api, getKeepsake, publicBaseUrl, saved, type PublicGathering, type Room
 import { useRoom } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
 import { AwayClock, DutyBanner } from '../duty.tsx';
+import { ROOM_LANGS, setRoomLang, w } from '../words.ts';
 import { HichkiBack } from './Guest.tsx';
 import { HichkiButton, HichkiTimeline, Leaderboard } from '../parts.tsx';
 
@@ -90,6 +91,7 @@ export function Host({ id, token: urlToken }: { id: string; token: string }) {
       {room.feed && <HichkiTimeline entries={room.feed.hichkis ?? []} awayName={gathering.awayName} limit={3} />}
       {presence && <Leaderboard presence={presence} limit={5} />}
       {room.api && <VerifiedSwitch api={room.api} gathering={room.feed?.gathering ?? gathering} />}
+      {room.api && <RoomLanguage api={room.api} gathering={room.feed?.gathering ?? gathering} />}
       <MemberList presence={presence} onRemove={room.api ? async (mid) => void (await room.api!.removeMember(mid)) : undefined} />
 
       {room.api && <WrapUp api={room.api} gathering={room.feed?.gathering ?? gathering} token={token} />}
@@ -139,16 +141,16 @@ function WrapUp({ api: roomApi, gathering, token }: { api: RoomApi; gathering: P
   return (
     <section className="card wrap-card">
       <h2>
-        {wrapped ? 'Wrapped up' : 'When it’s all over'} <small>yaadein, what’s left to keep</small>
+        {wrapped ? 'Wrapped up' : 'When it’s all over'} <small>{w().memories.toLowerCase()}, what’s left to keep</small>
       </h2>
       <p className="muted">
         {wrapped
-          ? `${away}’s link now opens on their yaadein. Send the page to the family too: the link only lets people look.`
-          : `Wrap up, and everything that happened becomes ${away}’s yaadein: every photo, voice note, letter and hichki on one page, in the order it happened.`}
+          ? `${away}’s link now opens on their ${w().memories.toLowerCase()}. Send the page to the family too: the link only lets people look.`
+          : `Wrap up, and everything that happened becomes ${away}’s ${w().memories.toLowerCase()}: every photo, voice note, letter and hichki on one page, in the order it happened.`}
       </p>
       {wrapped ? (
         <button type="button" className="btn btn-primary" onClick={share} disabled={!link}>
-          {copied ? 'Link copied' : 'Share the yaadein'}
+          {copied ? 'Link copied' : `Share the ${w().memories.toLowerCase()}`}
         </button>
       ) : (
         <button type="button" className="btn btn-primary" onClick={() => wrap(true)} disabled={busy}>
@@ -156,7 +158,7 @@ function WrapUp({ api: roomApi, gathering, token }: { api: RoomApi; gathering: P
         </button>
       )}
       <a className="btn" href={`/g/${gathering.id}/yaadein?t=${token}`}>
-        {wrapped ? 'Open the yaadein' : 'See the yaadein so far'}
+        {wrapped ? `Open the ${w().memories.toLowerCase()}` : `See the ${w().memories.toLowerCase()} so far`}
       </a>
       {wrapped && (
         <button type="button" className="btn btn-quiet" onClick={() => wrap(false)} disabled={busy}>
@@ -202,6 +204,38 @@ function VerifiedSwitch({ api: roomApi, gathering }: { api: RoomApi; gathering: 
               : 'Anyone with the QR code joins by typing a name. Names must be different from each other.'}
           </small>
         </span>
+      </label>
+      {error && <p className="error">{error}</p>}
+    </section>
+  );
+}
+
+// The room's language for feature names. Hichki stays Hichki.
+function RoomLanguage({ api: roomApi, gathering }: { api: RoomApi; gathering: PublicGathering }) {
+  const [error, setError] = useState('');
+  return (
+    <section className="card">
+      <label className="field">
+        <span>Language for the room</span>
+        <select
+          value={gathering.roomLang ?? 'hi'}
+          onChange={async (e) => {
+            setError('');
+            try {
+              const { gathering: g } = await roomApi.setRoomLang(e.target.value);
+              setRoomLang(g.roomLang);
+            } catch (err) {
+              setError((err as Error).message);
+            }
+          }}
+        >
+          {ROOM_LANGS.map(([code, name]) => (
+            <option key={code} value={code}>
+              {name}
+            </option>
+          ))}
+        </select>
+        <small className="muted">Feature names on every phone follow this: {w().letter}, {w().story}, {w().memories}.</small>
       </label>
       {error && <p className="error">{error}</p>}
     </section>

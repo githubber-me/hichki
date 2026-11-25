@@ -57,6 +57,7 @@ Times are epoch milliseconds. Requests accept either milliseconds or an ISO stri
 | `POST /api/gatherings/:id/join` | anyone | `{ deviceId, name }` | `{ member }`. Same phone joining again returns the same member. |
 | `DELETE /api/gatherings/:id/members/:mid` | host | | `{ ok }`. Removes a guest: their open phones get `fatal` with `removed: true`, their link stops working, and they leave the lists. |
 | `POST /api/gatherings/:id/me` | guest | `{ name?, photo? }` | `{ member }`. Change your own name (still unique) or photo: `photo` is an uploaded photo's `file`, or `null` to remove it. The web page calls this from the "This is you" step shown straight after joining. Works for signed-in guests too; a signed-in guest's chosen name and photo are kept when they sign in on another phone. |
+| `POST /api/gatherings/:id/room-lang` | host | `{ lang }` | `{ gathering }`. The room's language for feature names: `hi` (default), `en`, `kn`, `ta`, `te`, `bn`, `mr`, `gu`, `pa`, `ml`. Also accepted as `roomLang` when creating. `gathering.roomLang` carries it. |
 | `POST /api/gatherings/:id/verified` | host | `{ verified }` | `{ gathering }`. Turns verified guests on or off; people already in stay in. |
 | `GET /api/config` | anyone | | `{ publicBaseUrl, flags, sarvam, signIn }`. `signIn` is `{ publishableKey }` when Clerk is set up, else `null`. |
 

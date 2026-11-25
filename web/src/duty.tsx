@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import type { CatchUp, Feed, PublicGathering, RoomApi } from './api.ts';
 import { T } from './lang.tsx';
+import { w } from './words.ts';
 
 // "Toronto" from "America/Toronto".
 function placeOf(tz: string) {
@@ -77,7 +78,7 @@ export function DutyControl({ api, gathering, onChange }: { api: RoomApi; gather
   if (duty) {
     return (
       <section className="card duty-card is-on">
-        <p className="eyebrow">Duty pe</p>
+        <p className="eyebrow">{w().duty}</p>
         <h2>On duty until {timeIn(null, duty.until)}</h2>
         <p className="muted">
           Hichkis are kept for you until then, so nothing buzzes at work. Everyone can see you&rsquo;re on duty.
@@ -100,7 +101,7 @@ export function DutyControl({ api, gathering, onChange }: { api: RoomApi; gather
 
   return (
     <section className="card duty-card">
-      <p className="eyebrow">Duty pe</p>
+      <p className="eyebrow">{w().duty}</p>
       <h2>I&rsquo;m on duty</h2>
       <p className="muted">
         A shift, a posting, a delivery run. The room sees you&rsquo;re working, and hichkis wait for you instead of buzzing.

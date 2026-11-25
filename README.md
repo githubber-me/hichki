@@ -64,6 +64,10 @@ So Hichki lasts as long as the celebration does. On Wednesday, Meera can sit dow
 
 Each one appears at the gathering exactly when she wanted it to. Her link keeps working all week, and so does everyone else's.
 
+## In your family's language
+
+Hichki is Hichki everywhere, and the button always says हिचकी. Almost every Indian language has the same belief about hiccups. The host picks the room's language, and the names of everything else follow it, written the way people type on their phones: *Jab kholna* in Hindi becomes *Open when* in English, *Yaavaga terebeku* in Kannada, *Eppo thirakkanum* in Tamil. On top of that, each person can read every request and story in their own language.
+
 ## Not just weddings
 
 Hichki works for any gathering where someone is missing: Diwali at home, Christmas dinner, New Year's Eve, Eid, a family trip, a birthday.
@@ -121,3 +125,5 @@ To run Hichki yourself, on a laptop or on Kubernetes, follow [docs/setup.md](doc
 Hichki was built in one day with Claude, Anthropic's AI coding assistant, writing much of the code alongside a person who decided what to build, chose every feature and cut, tested it on real phones, and reviewed what shipped.
 
 The paintings are in the style of Warli, the wall art of the Adivasi communities of Maharashtra's north Sahyadri range, which is where the circle of dancers comes from. They were made with an AI image model for this project, not copied from any artist's work.
+
+The feature names in Hindi, English and Kannada were checked by hand; the other languages' names were written with AI help and should be checked by native speakers.

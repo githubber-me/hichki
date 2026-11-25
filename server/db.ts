@@ -124,6 +124,8 @@ for (const [column, type] of [
   ['away_seen_at', 'INTEGER'],
   // The away person's timezone, saved from their phone, so the room can see their clock.
   ['away_tz', 'TEXT'],
+  // The room's language for feature names ("Jab kholna" or "Open when"). Hindi by default.
+  ['room_lang', "TEXT NOT NULL DEFAULT 'hi'"],
 ] as const) {
   if (!gatheringColumns.some((c) => c.name === column)) db.exec(`ALTER TABLE gatherings ADD COLUMN ${column} ${type}`);
 }
@@ -194,6 +196,7 @@ export type Gathering = {
   duty_note: string | null;
   away_seen_at: number | null;
   away_tz: string | null;
+  room_lang: string;
 };
 
 export type Member = {
@@ -237,6 +240,7 @@ export function createGathering(name: string, occasion: string, awayName: string
     duty_note: null,
     away_seen_at: null,
     away_tz: null,
+    room_lang: 'hi',
   };
   db.prepare(
     `INSERT INTO gatherings (id, name, occasion, away_name, host_token, away_token, created_at, verified)
@@ -270,6 +274,10 @@ export function setDuty(id: string, until: number | null, note: string | null) {
 // The away person has caught up: next time, only show what's new after now.
 export function markAwaySeen(id: string, at = Date.now()) {
   db.prepare('UPDATE gatherings SET away_seen_at = ?, duty_from = CASE WHEN duty_until <= ? THEN NULL ELSE duty_from END WHERE id = ?').run(at, at, id);
+}
+
+export function setRoomLang(id: string, lang: string) {
+  db.prepare('UPDATE gatherings SET room_lang = ? WHERE id = ?').run(lang, id);
 }
 
 export function setAwayTz(id: string, tz: string) {

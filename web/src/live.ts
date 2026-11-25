@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
+import { setRoomLang } from './words.ts';
 import { roomApi, type Feed, type Flags, type PackItem, type Presence, type Proof, type PublicGathering, type Req, type Story, type Who } from './api.ts';
 
 export type Hichki = { from: string; at: number; note?: string | null; memberId?: string | null; held?: boolean; toAll?: boolean };
@@ -105,6 +106,9 @@ export function useRoom(id: string, who: Who | null) {
   useEffect(() => {
     if (occasion) document.documentElement.dataset.occasion = occasion;
   }, [occasion]);
+
+  // Feature names follow the room's language.
+  if (feed) setRoomLang(feed.gathering.roomLang);
 
   return { feed, api, connected, error, hichki, hichkiSent, hichkiBack, thanks, loved, accepted, now: () => Date.now() + skew.current };
 }

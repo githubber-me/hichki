@@ -45,6 +45,7 @@ import {
   setDuty,
   markAwaySeen,
   setAwayTz,
+  setRoomLang,
   setThanks,
   setLoved,
   setAside,
@@ -192,6 +193,11 @@ app.post('/api/gatherings', async (req) => {
   if (verified && !signInEnabled) throw new HttpError(400, 'Verified guests need sign-in, which isn\u2019t set up on this server.');
 
   const g = createGathering(name, occasion, awayName, verified);
+  const roomLang = clean(body.roomLang, 4);
+  if (ROOM_LANGS.includes(roomLang) && roomLang !== 'hi') {
+    setRoomLang(g.id, roomLang);
+    g.room_lang = roomLang;
+  }
   req.log.info({ event: 'gathering_created', gatheringId: g.id, occasion }, 'gathering created');
   return { gathering: gatheringView(g), hostToken: g.host_token, awayToken: g.away_token };
 });
@@ -300,6 +306,21 @@ app.post('/api/gatherings/:id/me', async (req) => {
   req.log.info({ event: 'profile_updated', gatheringId: g.id, memberId: c.member.id }, 'profile updated');
   broadcastPresence(g.id);
   return { member: { id: c.member.id, name, points: c.member.points, avatarUrl, verified: !!c.member.auth_user_id } };
+});
+
+// The languages the feature names come in (see web/src/words.ts).
+const ROOM_LANGS = ['hi', 'en', 'kn', 'ta', 'te', 'bn', 'mr', 'gu', 'pa', 'ml'];
+
+// The host changes the room's language for feature names.
+app.post('/api/gatherings/:id/room-lang', async (req) => {
+  const g = findGathering((req.params as { id: string }).id);
+  requireCaller(req, g, 'host');
+  const lang = clean(((req.body ?? {}) as Record<string, unknown>).lang, 4);
+  if (!ROOM_LANGS.includes(lang)) throw new HttpError(400, 'Pick one of the listed languages.');
+  setRoomLang(g.id, lang);
+  const updated = findGathering(g.id);
+  emitAll(g.id, 'gathering', gatheringView(updated));
+  return { gathering: gatheringView(updated) };
 });
 
 // The host turns verified guests on or off. People already in stay in.

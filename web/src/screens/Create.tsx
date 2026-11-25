@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, saved } from '../api.ts';
+import { ROOM_LANGS } from '../words.ts';
 
 const OCCASIONS = ['wedding', 'diwali', 'christmas', 'new year', 'eid', 'birthday', 'trip', 'gathering'];
 
@@ -10,6 +11,7 @@ export function Create() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [verified, setVerified] = useState(false);
+  const [roomLang, setRoomLangChoice] = useState('hi');
   // The verified switch only appears when this server has sign-in set up.
   const [canVerify, setCanVerify] = useState(false);
   useEffect(() => {
@@ -24,7 +26,7 @@ export function Create() {
     }
     setBusy(true);
     try {
-      const { gathering, hostToken, awayToken } = await api.createGathering(name, occasion, awayName, verified);
+      const { gathering, hostToken, awayToken } = await api.createGathering(name, occasion, awayName, verified, roomLang);
       saved.setHostToken(gathering.id, hostToken);
       saved.setAwayToken(gathering.id, awayToken);
       location.href = `/g/${gathering.id}/host?t=${hostToken}`;
@@ -67,6 +69,18 @@ export function Create() {
         <label className="field">
           <span>Who couldn&rsquo;t come?</span>
           <input value={awayName} onChange={(e) => setAwayName(e.target.value)} placeholder="Meera" maxLength={40} />
+        </label>
+
+        <label className="field">
+          <span>Language for the room</span>
+          <select value={roomLang} onChange={(e) => setRoomLangChoice(e.target.value)}>
+            {ROOM_LANGS.map(([code, name]) => (
+              <option key={code} value={code}>
+                {name}
+              </option>
+            ))}
+          </select>
+          <small className="muted">Names like Jab kholna and Dadi ki kahani follow this. Hichki stays Hichki.</small>
         </label>
 
         {canVerify && (

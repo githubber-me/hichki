@@ -5,6 +5,7 @@ import { MemberList } from './MemberList.tsx';
 import { CatchUpCard, DutyControl } from '../duty.tsx';
 import { SoundPrimer, playHichki, useWakeLock } from '../device.tsx';
 import { ActivityStrip, Moments } from '../moments.tsx';
+import { gloss, w } from '../words.ts';
 import { LangPicker, LangProvider, T, useLang } from '../lang.tsx';
 import { ThanksComposer, ThanksView } from '../thanks.tsx';
 import { Yaadein } from './Yaadein.tsx';
@@ -68,7 +69,7 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
           {here ? `${here} ${here === 1 ? 'person is' : 'people are'} there right now` : 'Nobody has the page open right now'}
         </p>
         <a className="yaad-link" href={`/g/${id}/yaadein?t=${token}`}>
-          {g.wrappedAt ? 'Your yaadein' : 'Your yaadein so far'}
+          {g.wrappedAt ? `Your ${w().memories.toLowerCase()}` : `Your ${w().memories.toLowerCase()} so far`}
         </a>
       </header>
 
@@ -487,7 +488,7 @@ function Letters({ api, feed }: { api: RoomApi; feed: Feed }) {
     <section className="letters">
       <header className="section-head">
         <h2>
-          Jab kholna <small>open when</small>
+          {w().letter} {gloss('open when') && <small>{gloss('open when')}</small>}
         </h2>
         <p className="muted">Record a voice letter now. It stays sealed until its moment comes, then plays for the whole room.</p>
       </header>

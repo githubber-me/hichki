@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getKeepsake, publicBaseUrl, saved, type Keepsake, type KeepsakeWho, type Proof, type Req, type Story, type Tap } from '../api.ts';
 import { ProofView } from '../parts.tsx';
+import { setRoomLang, w } from '../words.ts';
 
 // Yaadein (memories): what a celebration leaves behind. One page with every
 // answered request, opened letter, story and hichki, in the order they happened.
@@ -206,7 +207,11 @@ export function Yaadein({
     let alive = true;
     const load = () =>
       getKeepsake(id, who).then(
-        (k) => alive && setData(k),
+        (k) => {
+          if (!alive) return;
+          setRoomLang(k.gathering.roomLang);
+          setData(k);
+        },
         (e: Error) => alive && setError(e.message),
       );
     load();
@@ -419,7 +424,7 @@ export function Yaadein({
         {link && (
           <>
             <button type="button" className="btn btn-primary" onClick={share}>
-              {copied ? 'Link copied' : 'Share these yaadein'}
+              {copied ? 'Link copied' : `Share these ${w().memories.toLowerCase()}`}
             </button>
             <p className="muted small">The link you share only lets people look. Nobody can change anything from it.</p>
           </>
@@ -479,7 +484,7 @@ function MomentView({ moment: m, you, away }: { moment: Moment; you: boolean; aw
     const s = m.story;
     return (
       <>
-        <p className="eyebrow">{timeOf(m.at)} · Dadi ki kahani</p>
+        <p className="eyebrow">{timeOf(m.at)} · {w().story}</p>
         <p className="request-text">{s.teller} told a story</p>
         <audio src={s.audioUrl} controls preload="none" />
         {s.transcript && (
@@ -519,7 +524,7 @@ function MomentView({ moment: m, you, away }: { moment: Moment; you: boolean; aw
     <>
       <p className="eyebrow">
         {timeOf(m.at)} · {you ? 'You asked' : `${away} asked`}
-        {r.kind === 'do' ? ', meri taraf se' : ''}
+        {r.kind === 'do' ? `, ${w().behalf.toLowerCase()}` : ''}
       </p>
       <p className="request-text">{r.text}</p>
       {m.picked && (

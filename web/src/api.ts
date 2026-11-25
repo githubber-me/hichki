@@ -8,6 +8,7 @@ export type PublicGathering = {
   wrappedAt: number | null;
   verified: boolean; // guests must sign in to join
   awayTz: string | null; // the away person's timezone, from their phone
+  roomLang: string; // language for feature names, see words.ts
   duty: { from: number; until: number; note: string | null } | null; // Duty pe
 };
 export type Member = { id: string; name: string; points: number; avatarUrl?: string | null; verified?: boolean };
@@ -28,12 +29,13 @@ async function request<T>(path: string, body?: unknown, extraHeaders: Record<str
 }
 
 export const api = {
-  createGathering: (name: string, occasion: string, awayName: string, verified = false) =>
+  createGathering: (name: string, occasion: string, awayName: string, verified = false, roomLang = 'hi') =>
     request<{ gathering: PublicGathering; hostToken: string; awayToken: string }>('/api/gatherings', {
       name,
       occasion,
       awayName,
       verified,
+      roomLang,
     }),
   getGathering: (id: string) => request<{ gathering: PublicGathering }>(`/api/gatherings/${id}`),
   join: (id: string, name: string) =>
@@ -230,6 +232,7 @@ export function roomApi(id: string, who: Who) {
     hichkiRoom: (note?: string) => call<{ ok: true }>('POST', `${g}/hichki-room`, note ? { note } : {}),
     hichkiBack: (memberId: string) => call<{ ok: true }>('POST', `${g}/hichki-back`, { memberId }),
     // Host only.
+    setRoomLang: (lang: string) => call<{ gathering: PublicGathering }>('POST', `${g}/room-lang`, { lang }),
     removeMember: (memberId: string) => call<{ ok: true }>('DELETE', `${g}/members/${memberId}`),
     setVerified: (verified: boolean) => call<{ gathering: PublicGathering }>('POST', `${g}/verified`, { verified }),
     addStory: (file: string, teller: string, language?: string, targetLanguage?: string) =>

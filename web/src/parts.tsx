@@ -3,6 +3,7 @@
 
 import { Camera } from './camera.tsx';
 import { T, useLang } from './lang.tsx';
+import { gloss, w } from './words.ts';
 import { useState, type ReactNode } from 'react';
 import type { HichkiEntry, Presence, Proof, RoomApi, Story } from './api.ts';
 import { recordingName, shrinkPhoto, useRecorder } from './recorder.ts';
@@ -250,7 +251,7 @@ export function Stories({ api, stories, canRecord = true }: { api: RoomApi; stor
     <section className="stories">
       <header className="section-head">
         <h2>
-          Dadi ki kahani <small>grandma&rsquo;s story</small>
+          {w().story} {gloss('grandma\u2019s story') && <small>{gloss('grandma\u2019s story')}</small>}
         </h2>
         <p className="muted">Record an elder telling a story in their own language. Everyone can hear it and read it in theirs.</p>
       </header>
