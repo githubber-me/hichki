@@ -16,6 +16,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@clerk/backend": "^3.33.0",
+    "@clerk/react": "^6.19.6",
     "@fastify/multipart": "^10.1.9",
     "@fastify/static": "^10.1.12",
     "@flagsmith/nodejs": "^9.5.0",

@@ -538,3 +538,28 @@ a.btn, a.banner { text-decoration: none; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .hero-art { -webkit-mask: none; mask: none; }
 }
+
+/* ---------- Verified guests and the host's controls ---------- */
+
+/* A painted toggle: a rice-paste pill with a haldi dot that slides across. */
+.switch { display: flex; align-items: flex-start; gap: 14px; cursor: pointer; text-align: left; }
+.switch input { appearance: none; -webkit-appearance: none; flex: none; width: 46px; height: 26px; margin: 2px 0 0; border-radius: 999px; box-shadow: inset 0 0 0 2px var(--rice-soft); background: transparent; position: relative; cursor: pointer; transition: background 0.25s var(--settle); }
+.switch input::after { content: ''; position: absolute; top: 5px; left: 5px; width: 16px; height: 16px; border-radius: 50%; background: var(--rice-soft); transition: transform 0.3s var(--spring), background 0.25s; }
+.switch input:checked { background: var(--rice); }
+.switch input:checked::after { transform: translateX(20px); background: var(--wall); }
+.switch input:focus-visible { outline: 2px solid var(--haldi); outline-offset: 3px; }
+.switch input:disabled { opacity: 0.5; }
+.switch span { display: grid; gap: 3px; }
+.switch strong { font-weight: 600; font-size: 17px; }
+.switch small { font-size: 14px; line-height: 1.35; color: var(--rice-soft); }
+
+.badge-verified { color: var(--haldi); box-shadow: inset 0 0 0 1.5px var(--haldi); font-size: 10.5px; padding: 1px 8px; }
+.verified-join { display: grid; gap: 12px; justify-items: start; }
+.verified-join .btn { justify-self: stretch; }
+
+.member-list .avatar { width: 24px; height: 24px; flex: none; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 2px var(--rice-faint); }
+.member-list .online .avatar { box-shadow: 0 0 0 2px var(--haldi); }
+.member-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.member-remove, .member-actions { margin-left: auto; }
+.member-actions { display: flex; gap: 6px; }
+.btn-small { font-size: 13px; padding: 4px 10px; min-height: 0; }

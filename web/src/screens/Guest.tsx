@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { Suspense, lazy, useEffect, useState, type FormEvent } from 'react';
 import { api, saved, type Member, type Proof, type PublicGathering, type Req, type RoomApi } from '../api.ts';
 import { useRoom } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
@@ -20,7 +20,45 @@ export function Guest({ id }: { id: string }) {
   return <Room gathering={gathering} member={member} />;
 }
 
+// Sign-in is only downloaded when a gathering needs it.
+const VerifiedJoin = lazy(() => import('../signin.tsx'));
+
 function Join({ gathering, onJoined }: { gathering: PublicGathering; onJoined: (m: Member) => void }) {
+  const [signInKey, setSignInKey] = useState<string | null>(null);
+  useEffect(() => {
+    if (gathering.verified) api.config().then((c) => setSignInKey(c.signIn?.publishableKey ?? null), () => {});
+  }, [gathering.verified]);
+
+  if (gathering.verified) {
+    return (
+      <main className="screen">
+        <JoinHero gathering={gathering} />
+        {signInKey ? (
+          <Suspense fallback={<p className="muted">Getting sign-in ready&hellip;</p>}>
+            <VerifiedJoin publishableKey={signInKey} gathering={gathering} onJoined={onJoined} />
+          </Suspense>
+        ) : (
+          <p className="muted">Getting sign-in ready&hellip;</p>
+        )}
+      </main>
+    );
+  }
+  return <NameJoin gathering={gathering} onJoined={onJoined} />;
+}
+
+function JoinHero({ gathering }: { gathering: PublicGathering }) {
+  return (
+    <header className="hero hero-join">
+      <p className="muted">You&rsquo;re invited to</p>
+      <h1>{gathering.name}</h1>
+      <p>
+        {gathering.awayName} couldn&rsquo;t be here. Join so they can be part of it through you.
+      </p>
+    </header>
+  );
+}
+
+function NameJoin({ gathering, onJoined }: { gathering: PublicGathering; onJoined: (m: Member) => void }) {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -44,13 +82,7 @@ function Join({ gathering, onJoined }: { gathering: PublicGathering; onJoined: (
 
   return (
     <main className="screen">
-      <header className="hero hero-join">
-        <p className="muted">You&rsquo;re invited to</p>
-        <h1>{gathering.name}</h1>
-        <p>
-          {gathering.awayName} couldn&rsquo;t be here. Join so they can be part of it through you.
-        </p>
-      </header>
+      <JoinHero gathering={gathering} />
 
       <form className="card" onSubmit={submit}>
         <label className="field">

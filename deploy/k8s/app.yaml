@@ -1,7 +1,7 @@
 # Hichki on Kubernetes: one pod, one persistent volume for the SQLite database
 # and uploads, and a NodePort the cluster exposes on localhost:8088.
 #
-# Secrets (Sarvam and Flagsmith keys) are created by deploy/deploy.sh from
+# Secrets (Sarvam, Flagsmith and Clerk keys) are created by deploy/deploy.sh from
 # .env.local, so they never appear in this file.
 apiVersion: v1
 kind: Namespace

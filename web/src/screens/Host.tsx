@@ -82,7 +82,8 @@ export function Host({ id, token: urlToken }: { id: string; token: string }) {
 
       {room.api && room.feed?.flags.hichki && <HichkiButton api={room.api} awayName={gathering.awayName} />}
       {presence && <Leaderboard presence={presence} limit={5} />}
-      <MemberList presence={presence} />
+      {room.api && <VerifiedSwitch api={room.api} gathering={room.feed?.gathering ?? gathering} />}
+      <MemberList presence={presence} onRemove={room.api ? async (mid) => void (await room.api!.removeMember(mid)) : undefined} />
 
       {room.api && <WrapUp api={room.api} gathering={room.feed?.gathering ?? gathering} token={token} />}
     </main>
@@ -155,6 +156,46 @@ function WrapUp({ api: roomApi, gathering, token }: { api: RoomApi; gathering: P
           Reopen the gathering
         </button>
       )}
+      {error && <p className="error">{error}</p>}
+    </section>
+  );
+}
+
+// Verified guests can be turned on or off at any time. People already in stay in.
+function VerifiedSwitch({ api: roomApi, gathering }: { api: RoomApi; gathering: PublicGathering }) {
+  const [canVerify, setCanVerify] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    api.config().then((c) => setCanVerify(!!c.signIn), () => {});
+  }, []);
+  if (!canVerify) return null;
+
+  async function toggle(next: boolean) {
+    setBusy(true);
+    setError('');
+    try {
+      await roomApi.setVerified(next);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+    setBusy(false);
+  }
+
+  return (
+    <section className="card">
+      <label className="switch">
+        <input type="checkbox" aria-label="Only verified guests" checked={gathering.verified} disabled={busy} onChange={(e) => toggle(e.target.checked)} />
+        <span>
+          <strong>Only verified guests</strong>
+          <small>
+            {gathering.verified
+              ? 'New guests sign in with Google or their phone number. People already here stay in.'
+              : 'Anyone with the QR code joins by typing a name. Names must be different from each other.'}
+          </small>
+        </span>
+      </label>
       {error && <p className="error">{error}</p>}
     </section>
   );

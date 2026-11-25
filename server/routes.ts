@@ -35,11 +35,17 @@ import {
   type Member,
   type RequestKind,
   type RequestRow,
+  memberByDevice,
+  memberWithName,
+  removeMember,
+  setVerified,
 } from './db.ts';
 import { isOwnFile, mediaOf, saveUpload, UploadError } from './files.ts';
 import { flagStatus, flags, requestMode, trackFulfilled } from './flags.ts';
-import { broadcastPresence, emitAll, emitAway, onlineMemberIds, presence, publishRequest } from './live.ts';
+import { broadcastPresence, disconnectMember, emitAll, emitAway, onlineMemberIds, presence, publishRequest } from './live.ts';
 import { sarvamEnabled, SarvamError, toCard, transcribe, translate } from './sarvam.ts';
+import { signedInGuest, signInEnabled, SignInError } from './auth.ts';
+import { config } from './config.ts';
 import { gatheringView, proofView, requestView, storyView } from './views.ts';
 
 const POINTS_FOR_ACCEPTED_PROOF = 10;
@@ -81,7 +87,7 @@ function caller(req: FastifyRequest, g: Gathering): Caller | null {
   const memberId = req.headers['x-hichki-member'];
   if (typeof memberId === 'string') {
     const member = getMember(memberId);
-    if (member && member.gathering_id === g.id) return { role: 'guest', gathering: g, member };
+    if (member && member.gathering_id === g.id && !member.removed_at) return { role: 'guest', gathering: g, member };
   }
   return null;
 }
@@ -153,6 +159,8 @@ app.get('/api/config', async () => ({
   publicBaseUrl: process.env.PUBLIC_BASE_URL?.replace(/\/$/, '') ?? '',
   flags: flags(),
   sarvam: sarvamEnabled,
+  // Public by design: the browser needs it to show the sign-in screen.
+  signIn: signInEnabled ? { publishableKey: config.clerk.publishableKey } : null,
 }));
 
 // ---------------------------------------------------------------------------
@@ -166,7 +174,10 @@ app.post('/api/gatherings', async (req) => {
   const awayName = clean(body.awayName, 40);
   if (!name || !awayName) throw new HttpError(400, 'Give the gathering a name and say who couldn’t come.');
 
-  const g = createGathering(name, occasion, awayName);
+  const verified = body.verified === true;
+  if (verified && !signInEnabled) throw new HttpError(400, 'Verified guests need sign-in, which isn\u2019t set up on this server.');
+
+  const g = createGathering(name, occasion, awayName, verified);
   req.log.info({ event: 'gathering_created', gatheringId: g.id, occasion }, 'gathering created');
   return { gathering: gatheringView(g), hostToken: g.host_token, awayToken: g.away_token };
 });
@@ -180,13 +191,87 @@ app.post('/api/gatherings/:id/join', async (req) => {
   const g = findGathering((req.params as { id: string }).id);
   const body = (req.body ?? {}) as Record<string, unknown>;
   const deviceId = clean(body.deviceId, 64);
-  const name = clean(body.name, 40);
-  if (!deviceId || !name) throw new HttpError(400, 'Enter your name to join.');
+  if (!deviceId) throw new HttpError(400, 'Enter your name to join.');
+  if (!allowJoin(req.ip)) throw new HttpError(429, 'Too many people joined from here just now. Try again in a minute.');
 
-  const member = joinGathering(g.id, deviceId, name);
-  req.log.info({ event: 'member_joined', gatheringId: g.id, memberId: member.id }, 'member joined');
+  // Verified gathering: the name and photo come from the guest's sign-in, not a text box.
+  let name = clean(body.name, 40);
+  let auth: { userId: string; avatarUrl: string | null } | null = null;
+  if (g.verified) {
+    try {
+      const guest = await signedInGuest(req.headers.authorization);
+      name = guest.name;
+      auth = { userId: guest.userId, avatarUrl: guest.avatarUrl };
+    } catch (err) {
+      if (err instanceof SignInError) throw new HttpError(401, err.message);
+      throw err;
+    }
+  }
+  if (!name) throw new HttpError(400, 'Enter your name to join.');
+
+  const returning = auth ? null : memberByDevice(g.id, deviceId);
+  if (returning?.removed_at) throw new HttpError(403, 'The host has removed you from this gathering.');
+
+  // Names are unique in a gathering, so nobody can pass as someone who's already here.
+  const clash = memberWithName(g.id, name, returning?.id ?? null);
+  if (clash && clash.auth_user_id !== auth?.userId) {
+    throw new HttpError(
+      409,
+      auth
+        ? `Someone called ${clash.name} has already joined. Ask the host to check.`
+        : `${clash.name} has already joined. Add a surname or an initial, like ${name} K.`,
+    );
+  }
+
+  const member = joinGathering(g.id, deviceId, name, auth);
+  if (member.removed_at) throw new HttpError(403, 'The host has removed you from this gathering.');
+
+  req.log.info({ event: 'member_joined', gatheringId: g.id, memberId: member.id, verified: !!auth }, 'member joined');
   broadcastPresence(g.id);
-  return { member: { id: member.id, name: member.name, points: member.points } };
+  return {
+    member: { id: member.id, name: member.name, points: member.points, avatarUrl: member.avatar_url, verified: !!member.auth_user_id },
+  };
+});
+
+// A few joins per minute from one address is plenty for a family; more is spam.
+const joinsByIp = new Map<string, number[]>();
+function allowJoin(ip: string): boolean {
+  const now = Date.now();
+  const recent = (joinsByIp.get(ip) ?? []).filter((t) => now - t < 60_000);
+  if (recent.length >= 20) return false;
+  recent.push(now);
+  joinsByIp.set(ip, recent);
+  return true;
+}
+
+// The host removes someone. Their phone is disconnected, their link stops working,
+// and they leave the member list and leaderboard. What they already sent stays.
+app.delete('/api/gatherings/:id/members/:mid', async (req) => {
+  const { id, mid } = req.params as { id: string; mid: string };
+  const g = findGathering(id);
+  requireCaller(req, g, 'host');
+  const member = getMember(mid);
+  if (!member || member.gathering_id !== g.id || member.removed_at) throw new HttpError(404, 'That person isn\u2019t in this gathering.');
+
+  removeMember(member.id);
+  req.log.info({ event: 'member_removed', gatheringId: g.id, memberId: member.id }, 'member removed');
+  disconnectMember(g.id, member.id);
+  broadcastPresence(g.id);
+  return { ok: true };
+});
+
+// The host turns verified guests on or off. People already in stay in.
+app.post('/api/gatherings/:id/verified', async (req) => {
+  const g = findGathering((req.params as { id: string }).id);
+  requireCaller(req, g, 'host');
+  const verified = ((req.body ?? {}) as Record<string, unknown>).verified === true;
+  if (verified && !signInEnabled) throw new HttpError(400, 'Verified guests need sign-in, which isn\u2019t set up on this server.');
+
+  setVerified(g.id, verified);
+  const updated = findGathering(g.id);
+  req.log.info({ event: 'verified_changed', gatheringId: g.id, verified }, 'verified changed');
+  emitAll(g.id, 'gathering', gatheringView(updated));
+  return { gathering: gatheringView(updated) };
 });
 
 // Everything a screen needs to draw itself, from this caller's point of view.

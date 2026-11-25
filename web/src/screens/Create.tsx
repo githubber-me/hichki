@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { api, saved } from '../api.ts';
 
 const OCCASIONS = ['wedding', 'diwali', 'christmas', 'new year', 'eid', 'birthday', 'gathering'];
@@ -9,6 +9,12 @@ export function Create() {
   const [occasion, setOccasion] = useState('wedding');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [verified, setVerified] = useState(false);
+  // The verified switch only appears when this server has sign-in set up.
+  const [canVerify, setCanVerify] = useState(false);
+  useEffect(() => {
+    api.config().then((c) => setCanVerify(!!c.signIn), () => {});
+  }, []);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -18,7 +24,7 @@ export function Create() {
     }
     setBusy(true);
     try {
-      const { gathering, hostToken, awayToken } = await api.createGathering(name, occasion, awayName);
+      const { gathering, hostToken, awayToken } = await api.createGathering(name, occasion, awayName, verified);
       saved.setHostToken(gathering.id, hostToken);
       saved.setAwayToken(gathering.id, awayToken);
       location.href = `/g/${gathering.id}/host?t=${hostToken}`;
@@ -62,6 +68,16 @@ export function Create() {
           <span>Who couldn&rsquo;t come?</span>
           <input value={awayName} onChange={(e) => setAwayName(e.target.value)} placeholder="Meera" maxLength={40} />
         </label>
+
+        {canVerify && (
+          <label className="switch">
+            <input type="checkbox" aria-label="Only verified guests" checked={verified} onChange={(e) => setVerified(e.target.checked)} />
+            <span>
+              <strong>Only verified guests</strong>
+              <small>Guests sign in with Google or their phone number, so nobody can join under someone else&rsquo;s name.</small>
+            </span>
+          </label>
+        )}
 
         {error && <p className="error">{error}</p>}
 

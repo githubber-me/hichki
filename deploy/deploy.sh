@@ -21,10 +21,11 @@ kind load docker-image hichki:dev --name "$CLUSTER"
 
 kubectl apply -f deploy/k8s/app.yaml
 
-# Only the two secrets go into the cluster, read from the local env file.
+# Only the keys go into the cluster (Sarvam, Flagsmith, and Clerk for optional sign-in),
+# read from the local env file.
 echo "Updating secrets from $ENV_FILE"
 kubectl -n "$NAMESPACE" create secret generic hichki-secrets \
-  --from-env-file=<(grep -E '^(SARVAM_API_KEY|FLAGSMITH_SERVER_SIDE_ENVIRONMENT_KEY)=' "$ENV_FILE") \
+  --from-env-file=<(grep -E '^(SARVAM_API_KEY|FLAGSMITH_SERVER_SIDE_ENVIRONMENT_KEY|CLERK_PUBLISHABLE_KEY|CLERK_SECRET_KEY)=' "$ENV_FILE") \
   --dry-run=client -o yaml | kubectl apply -f -
 
 # Same tag every time, so restart to pick up the newly loaded image.

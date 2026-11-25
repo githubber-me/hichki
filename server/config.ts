@@ -27,6 +27,11 @@ export const config = {
     translateModel: process.env.SARVAM_TRANSLATE_MODEL ?? 'sarvam-translate:v1',
   },
 
+  clerk: {
+    publishableKey: (process.env.CLERK_PUBLISHABLE_KEY ?? '').trim(),
+    secretKey: (process.env.CLERK_SECRET_KEY ?? '').trim(),
+  },
+
   flagsmith: {
     serverKey: process.env.FLAGSMITH_SERVER_SIDE_ENVIRONMENT_KEY ?? '',
     apiUrl: process.env.FLAGSMITH_API_URL || undefined,

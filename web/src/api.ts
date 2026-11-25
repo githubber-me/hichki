@@ -1,16 +1,23 @@
 // Small helpers for talking to the server and remembering this phone.
 
-export type PublicGathering = { id: string; name: string; occasion: string; awayName: string; wrappedAt: number | null };
-export type Member = { id: string; name: string; points: number };
+export type PublicGathering = {
+  id: string;
+  name: string;
+  occasion: string;
+  awayName: string;
+  wrappedAt: number | null;
+  verified: boolean; // guests must sign in to join
+};
+export type Member = { id: string; name: string; points: number; avatarUrl?: string | null; verified?: boolean };
 export type Presence = {
   members: (Member & { online: boolean })[];
   awayOnline: boolean;
 };
 
-async function request<T>(path: string, body?: unknown): Promise<T> {
+async function request<T>(path: string, body?: unknown, extraHeaders: Record<string, string> = {}): Promise<T> {
   const res = await fetch(path, {
     method: body === undefined ? 'GET' : 'POST',
-    headers: body === undefined ? undefined : { 'content-type': 'application/json' },
+    headers: body === undefined ? extraHeaders : { 'content-type': 'application/json', ...extraHeaders },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
@@ -19,16 +26,21 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
 }
 
 export const api = {
-  createGathering: (name: string, occasion: string, awayName: string) =>
+  createGathering: (name: string, occasion: string, awayName: string, verified = false) =>
     request<{ gathering: PublicGathering; hostToken: string; awayToken: string }>('/api/gatherings', {
       name,
       occasion,
       awayName,
+      verified,
     }),
   getGathering: (id: string) => request<{ gathering: PublicGathering }>(`/api/gatherings/${id}`),
   join: (id: string, name: string) =>
     request<{ member: Member }>(`/api/gatherings/${id}/join`, { deviceId: deviceId(), name }),
-  config: () => request<{ publicBaseUrl: string }>('/api/config'),
+  // Verified gatherings: the name comes from the sign-in, proven by the session token.
+  joinSignedIn: (id: string, sessionToken: string) =>
+    request<{ member: Member }>(`/api/gatherings/${id}/join`, { deviceId: deviceId() }, { authorization: `Bearer ${sessionToken}` }),
+  config: () =>
+    request<{ publicBaseUrl: string; signIn: { publishableKey: string } | null }>('/api/config'),
 };
 
 // ---------------------------------------------------------------------------
@@ -161,6 +173,9 @@ export function roomApi(id: string, who: Who) {
     hichki: () => call<{ ok: true }>('POST', `${g}/hichki`),
     // The host says the celebration is over, or reopens it.
     wrap: (wrapped: boolean) => call<{ gathering: PublicGathering }>('POST', `${g}/wrap`, { wrapped }),
+    // Host only.
+    removeMember: (memberId: string) => call<{ ok: true }>('DELETE', `${g}/members/${memberId}`),
+    setVerified: (verified: boolean) => call<{ gathering: PublicGathering }>('POST', `${g}/verified`, { verified }),
     addStory: (file: string, teller: string, language?: string, targetLanguage?: string) =>
       call<Story>('POST', `${g}/stories`, { file, teller, language, targetLanguage }),
   };
