@@ -108,7 +108,18 @@ export function ThanksComposer({ api, proof }: { api: RoomApi; proof: Proof }) {
 }
 
 // A short selfie video, kept small so it sends quickly on a phone connection.
-function VideoNote({ onDone, onCancel, busy }: { onDone: (blob: Blob) => void; onCancel: () => void; busy: boolean }) {
+export function VideoNote({
+  onDone,
+  onCancel,
+  busy,
+  facing: startFacing = 'user',
+}: {
+  onDone: (blob: Blob) => void;
+  onCancel: () => void;
+  busy: boolean;
+  facing?: 'user' | 'environment';
+}) {
+  const [facing, setFacing] = useState(startFacing);
   const preview = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
@@ -123,18 +134,21 @@ function VideoNote({ onDone, onCancel, busy }: { onDone: (blob: Blob) => void; o
       return;
     }
     navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 640 } }, audio: true })
+      .getUserMedia({ video: { facingMode: { ideal: facing }, width: { ideal: 480 }, height: { ideal: 640 } }, audio: true })
       .then((s) => {
         if (stopped) return s.getTracks().forEach((t) => t.stop());
+        stream.current?.getTracks().forEach((t) => t.stop());
         stream.current = s;
         if (preview.current) preview.current.srcObject = s;
       })
       .catch(() => setError('Allow the camera and microphone, then try again.'));
     return () => {
       stopped = true;
-      stream.current?.getTracks().forEach((t) => t.stop());
     };
-  }, []);
+  }, [facing]);
+
+  // Turn the camera off when this closes.
+  useEffect(() => () => stream.current?.getTracks().forEach((t) => t.stop()), []);
 
   function start() {
     if (!stream.current) return;
@@ -170,7 +184,7 @@ function VideoNote({ onDone, onCancel, busy }: { onDone: (blob: Blob) => void; o
   if (error) return <p className="error">{error}</p>;
   return (
     <div className="video-note">
-      <video ref={preview} className="thanks-video" autoPlay muted playsInline />
+      <video ref={preview} className={`thanks-video ${facing === 'user' ? 'is-mirrored' : ''}`} autoPlay muted playsInline />
       <div className="thanks-actions">
         {!recording ? (
           <button type="button" className="btn btn-primary btn-small" disabled={busy} onClick={start}>
@@ -181,6 +195,9 @@ function VideoNote({ onDone, onCancel, busy }: { onDone: (blob: Blob) => void; o
             Stop and send ({VIDEO_SECONDS - seconds}s)
           </button>
         )}
+        <button type="button" className="btn btn-quiet btn-small" disabled={recording || busy} onClick={() => setFacing((f) => (f === 'user' ? 'environment' : 'user'))}>
+          Flip
+        </button>
         <button type="button" className="btn btn-quiet btn-small" disabled={recording || busy} onClick={onCancel}>
           Cancel
         </button>

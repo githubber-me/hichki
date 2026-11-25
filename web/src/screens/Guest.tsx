@@ -4,6 +4,7 @@ import { useRoom } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
 import { AwayClock, DutyBanner } from '../duty.tsx';
 import { ActivityStrip, Moments } from '../moments.tsx';
+import { VideoNote } from '../thanks.tsx';
 import { LangPicker, LangProvider, T, saveLang, savedLang, useLang } from '../lang.tsx';
 import type { Hichki } from '../live.ts';
 import { HichkiButton, Leaderboard, MicIcon, PhotoButton, RecordButton, Tabs, clock, uploadPhoto, uploadRecording } from '../parts.tsx';
@@ -262,6 +263,7 @@ function RequestCard({
 }) {
   const send = useSend(roomApi, request.id);
   const mine = proofs.filter((p) => p.memberId === me).length;
+  const [filming, setFilming] = useState(false);
 
   if (request.kind === 'story') {
     return <StoryRequestCard request={request} proofs={proofs} api={roomApi} away={away} me={me} />;
@@ -287,6 +289,9 @@ function RequestCard({
         <PhotoButton onPick={send.photo} disabled={send.busy}>
           {send.busy ? 'Sending…' : request.kind === 'see' ? 'Send a photo' : 'Send photo proof'}
         </PhotoButton>
+        <button type="button" className="btn btn-quiet" disabled={send.busy} onClick={() => setFilming(true)}>
+          Video
+        </button>
         <RecordButton
           onDone={send.voice}
           disabled={send.busy}
@@ -298,6 +303,17 @@ function RequestCard({
           }
         />
       </div>
+      {filming && (
+        <VideoNote
+          facing="environment"
+          busy={send.busy}
+          onCancel={() => setFilming(false)}
+          onDone={async (blob) => {
+            await send.video(blob);
+            setFilming(false);
+          }}
+        />
+      )}
       {send.error && <p className="error">{send.error}</p>}
 
       <p className="muted small">
@@ -375,6 +391,8 @@ function useSend(roomApi: RoomApi, requestId: string) {
     error,
     photo: (file: File) => run(() => uploadPhoto(roomApi, file)),
     voice: (blob: Blob) => run(() => uploadRecording(roomApi, blob)),
+    // A short video, recorded in the page (up to 20 seconds, kept small).
+    video: (blob: Blob) => run(() => roomApi.upload(blob, blob.type.includes('mp4') ? 'video.mp4' : 'video.webm')),
   };
 }
 
