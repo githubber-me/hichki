@@ -1,9 +1,13 @@
 // Reads settings from the environment. See .env.example for what each one means.
 
-try {
-  process.loadEnvFile(); // loads .env when it exists; fine if it doesn't
-} catch {
-  // no .env file: rely on real environment variables and defaults
+// Local settings: .env.local first, then .env. A value already set in the real
+// environment (for example by Kubernetes) always wins, and missing files are fine.
+for (const file of ['.env.local', '.env']) {
+  try {
+    process.loadEnvFile(file);
+  } catch {
+    // file not there: rely on real environment variables and defaults
+  }
 }
 
 export const config = {

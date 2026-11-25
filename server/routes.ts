@@ -244,7 +244,7 @@ app.post('/api/gatherings/:id/requests/draft', async (req) => {
   try {
     const heard = await transcribe(body.file, { language, mode: 'codemix' });
     if (!heard.transcript) throw new HttpError(422, 'Couldn’t hear anything in that recording. Try again a little closer.');
-    const card = await toCard(heard.transcript, g.away_name, g.occasion);
+    const card = await toCard(heard.transcript, heard.language);
     req.log.info({ event: 'request_drafted', gatheringId: g.id, kind: card.kind, language: heard.language }, 'draft');
     return { ...card, transcript: heard.transcript, language: heard.language, file: body.file };
   } catch (err) {

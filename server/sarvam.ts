@@ -115,45 +115,77 @@ const CARD_SCHEMA = {
   },
 };
 
-export async function toCard(transcript: string, awayName: string, occasion: string): Promise<Card> {
+// Short examples teach the model the exact shape we want, in Hindi, Hinglish and English.
+const CARD_EXAMPLES: [string, Card][] = [
+  ['दादी जब दुल्हन को देखें तो उनकी फोटो भेजना', { kind: 'see', text: 'Send me a photo of Dadi when she sees the bride', textOriginal: 'दादी जब दुल्हन को देखें तो उनकी फोटो भेजना' }],
+  ['mummy ko meri taraf se ek hug de dena', { kind: 'do', text: 'Give Mummy a hug from me', textOriginal: 'mummy ko meri taraf se ek hug de dena' }],
+  ['मेरी तरफ से मंदिर में दिया जला देना और फोटो भेजना', { kind: 'do', text: 'Light a diya at the temple for me, and send a photo', textOriginal: 'मेरी तरफ से मंदिर में दिया जला देना और फोटो भेजना' }],
+  ['show me papa dancing at the sangeet', { kind: 'see', text: 'Show me Papa dancing at the sangeet', textOriginal: 'show me papa dancing at the sangeet' }],
+];
+
+const CARD_INSTRUCTIONS =
+  'You turn a spoken request into one short card for a family celebration. The speaker could not attend ' +
+  'and is asking the people there. Reply with JSON only: ' +
+  '"kind" is "see" when they mainly want to be shown something (a person, a moment, a photo of it), ' +
+  'and "do" when they want someone to do something for them (light a diya, give a hug, touch feet, play a message), even if they also ask for a photo. ' +
+  '"text" is the request in simple English, in their own voice, at most 12 words. ' +
+  '"text_original" is the request in the language and script they spoke, as one sentence. ' +
+  'Only use names and relations that the speaker said. Never add anything else.';
+
+const hasIndicScript = (text: string) => /[\u0900-\u0DFF]/.test(text);
+
+export async function toCard(transcript: string, language: string | null = null): Promise<Card> {
+  const examples = CARD_EXAMPLES.flatMap(([said, card]) => [
+    { role: 'user', content: said },
+    { role: 'assistant', content: JSON.stringify({ kind: card.kind, text: card.text, text_original: card.textOriginal }) },
+  ]);
+
   const body = await call('/v1/chat/completions', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
       model: chatModel,
-      temperature: 0.2,
-      max_tokens: 400,
+      temperature: 0,
+      max_tokens: 300,
       reasoning_effort: null,
       response_format: { type: 'json_schema', json_schema: CARD_SCHEMA },
-      messages: [
-        {
-          role: 'system',
-          content:
-            `${awayName} could not come to a ${occasion} and is taking part from far away. ` +
-            'They spoke a request to the people at the gathering. Turn it into one short card the room can act on. ' +
-            'Keep their meaning and warmth; keep names and relations as they said them (Dadi, Nani, Papa). ' +
-            'Do not add anything they did not ask for. Reply with JSON only.',
-        },
-        { role: 'user', content: transcript },
-      ],
+      messages: [{ role: 'system', content: CARD_INSTRUCTIONS }, ...examples, { role: 'user', content: transcript }],
     }),
   });
 
-  const content = body?.choices?.[0]?.message?.content ?? '';
+  let card: Card | null = null;
   try {
-    const parsed = JSON.parse(content);
+    const parsed = JSON.parse(body?.choices?.[0]?.message?.content ?? '');
     if ((parsed.kind === 'see' || parsed.kind === 'do') && typeof parsed.text === 'string' && parsed.text.trim()) {
-      return {
+      card = {
         kind: parsed.kind,
-        text: parsed.text.trim().slice(0, 140),
-        textOriginal: String(parsed.text_original ?? '').trim().slice(0, 200) || transcript,
+        text: parsed.text.trim(),
+        textOriginal: String(parsed.text_original ?? '').trim() || transcript,
       };
     }
   } catch {
-    // fall through to the plain fallback below
+    // handled below
   }
-  log.warn({ event: 'sarvam_card_unparsed' }, 'card could not be parsed, using transcript');
-  return { kind: guessKind(transcript), text: transcript.slice(0, 140), textOriginal: transcript };
+
+  if (!card) {
+    log.warn({ event: 'sarvam_card_unparsed' }, 'card could not be parsed, using transcript');
+    card = { kind: guessKind(transcript), text: transcript, textOriginal: transcript };
+  }
+
+  // The card must be readable by everyone in the room. If it didn't come back in
+  // English, or came back far too long, translate the transcript instead.
+  if ((hasIndicScript(card.text) || card.text.split(/\s+/).length > 20) && language && language !== 'en-IN') {
+    try {
+      card.text = await translate(transcript, language, 'en-IN');
+    } catch {
+      // keep what we have
+    }
+  }
+
+  // The original should be what they said, not something the model wrote around it.
+  if (card.textOriginal.length > transcript.length * 1.5) card.textOriginal = transcript;
+
+  return { ...card, text: card.text.slice(0, 140), textOriginal: card.textOriginal.slice(0, 200) };
 }
 
 // Used when the model's answer can't be read: "show me", "dikhao", "dekhna" mean see.
