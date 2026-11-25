@@ -707,3 +707,65 @@ a.btn, a.banner { text-decoration: none; }
 .thanks-video.is-mirrored { transform: scaleX(-1); }
 .nominee-picker { display: grid; gap: 8px; }
 .retry { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+
+/* ---------- Visual pass: everything stays painted on the wall, nothing is a filled box ---------- */
+
+/* What just happened reads as a dotted path with a lamp at the newest moment,
+   the same line Yaadein uses, instead of a stack of dark boxes. */
+.activity h2, .hichki-timeline h2, .section-title { font-size: 20px; }
+.activity ol { gap: 0; padding-left: 7px; border-left: 2px dotted var(--rice-faint); }
+.activity li, .activity.is-highlights li { position: relative; padding: 8px 0 8px 18px; background: none; box-shadow: none; border-radius: 0; }
+.activity li::before { content: ''; position: absolute; left: -8px; top: 15px; width: 12px; height: 12px; border-radius: 50%; background: var(--wall); box-shadow: inset 0 0 0 2.5px var(--rice); }
+.activity li:first-child::before { background: var(--haldi); box-shadow: none; animation: lamp 2.4s ease-out infinite; }
+.activity li p { color: var(--rice); }
+.activity li img { border: 1.5px solid var(--rice); }
+
+/* Ideas are slips on the wall, each with the small painting for its kind. */
+.ideas ul, .chips { scrollbar-width: none; }
+.ideas ul::-webkit-scrollbar, .chips::-webkit-scrollbar { display: none; }
+.idea { min-height: 80px; padding: 11px 12px 11px 50px; font-size: 15.5px; background: none; box-shadow: inset 0 0 0 2px var(--rice-faint); }
+.idea::before, .idea-do::before, .idea-story::before { left: 9px; top: 50%; width: 34px; height: 34px; margin-top: -17px; border-radius: 0; box-shadow: none; transform: none; background: url('/brand/art/feature-eyes.webp') center / contain no-repeat; }
+.idea-do::before { background-image: url('/brand/art/feature-behalf.webp'); }
+.idea-story::before { background-image: url('/brand/art/feature-story.webp'); }
+.idea:active { box-shadow: inset 0 0 0 2px var(--haldi); }
+
+/* On the away screen the mic is the main thing. The two side doors stay quiet. */
+.duty-open { min-height: 0; padding: 4px 6px; box-shadow: none; font-family: var(--font-body); font-size: 15px; color: var(--rice-soft); text-decoration: underline dotted; text-underline-offset: 4px; }
+.room-hichki .btn { gap: 10px; }
+.room-hichki .btn::before { content: ''; width: 30px; height: 30px; flex: none; background: url('/brand/sun.webp') center / contain no-repeat; animation: turn 20s linear infinite; }
+.sound-primer { animation: breathe 1.8s ease-in-out infinite; }
+
+/* Filters are painted tabs, in the display face like every other control. */
+.chips button { font-family: var(--font-display); font-size: 16px; border-radius: var(--hand-sm); box-shadow: inset 0 0 0 2px var(--rice-faint); }
+.chips button.is-active { color: var(--wall-deep); }
+.chips button.is-active small { color: var(--wall-deep); }
+
+/* A heart fills with haldi when it is given. Picked and loved photos get a haldi line, not a glow. */
+.love.is-loved { background: var(--haldi); color: var(--wall-deep); box-shadow: none; animation: pop 0.45s var(--spring); }
+.photo-grid li.is-picked .proof-media { box-shadow: none; border: 3px solid var(--haldi); }
+.photo-grid li.is-loved .proof-media { box-shadow: none; border-color: var(--haldi); }
+.set-aside > summary { list-style: none; text-decoration: underline dotted; text-underline-offset: 4px; }
+.set-aside > summary::-webkit-details-marker { display: none; }
+
+/* Her voice, thanks and the original words sit on dotted lines, like the rest of the wall. */
+.hear-ask { padding-top: 10px; border-top: 2px dotted var(--rice-faint); }
+.thanks-compose, .thanks { border-top: 2px dotted var(--rice-faint); }
+.original-toggle { color: var(--haldi); font-size: 13.5px; }
+
+/* The hichki note is a field like any other. */
+.hichki-note { width: 100%; margin: 0; }
+.hichki-note input { font-family: var(--font-display); font-size: 19px; border-bottom-width: 2px; }
+.hichki-note input::placeholder { font-style: normal; }
+
+/* Camera: the shutter wears the haldi ring, and the bar gets the wall's zigzag edge. */
+.camera-bar { position: relative; }
+.camera-bar::before { content: ''; position: absolute; left: 0; right: 0; top: -11px; height: 12px; background: var(--zigzag) repeat-x center / 24px 12px; }
+.camera-shutter { box-shadow: 0 0 0 5px var(--wall-deep), 0 0 0 8px var(--haldi); transition: transform 0.15s var(--spring); }
+
+.btn-small { font-family: var(--font-body); font-weight: 600; border-radius: 999px; }
+audio { accent-color: var(--haldi); }
+
+/* Under each photo: love and set aside are two small quiet buttons on one line; picking is the main one. */
+.proof-actions { flex-wrap: nowrap; gap: 6px; }
+.proof-grid .proof-actions .btn { flex: 1; min-height: 36px; padding: 4px 6px; font-family: var(--font-body); font-weight: 600; font-size: 13.5px; box-shadow: inset 0 0 0 1.5px var(--rice-faint); border-radius: 999px; white-space: nowrap; }
+.proof-grid .proof-actions .love.is-loved { box-shadow: none; }
