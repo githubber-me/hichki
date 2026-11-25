@@ -1,0 +1,17 @@
+# Dependencies and builds
+node_modules/
+dist/
+
+# Local environment (real keys)
+.env
+.env.*
+!.env.example
+
+# App data: SQLite database and uploads
+data/
+*.sqlite
+*.sqlite-journal
+
+# Logs and OS files
+*.log
+.DS_Store
