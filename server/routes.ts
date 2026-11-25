@@ -47,12 +47,14 @@ import {
   setThanks,
   listHichkisSince,
   recentHichkis,
+  cachedTranslation,
+  saveTranslation,
 } from './db.ts';
 import { isOwnFile, mediaOf, mediaUrl, saveUpload, UploadError } from './files.ts';
 import { flagStatus, flags, packs, requestMode, trackFulfilled } from './flags.ts';
 import { packFor } from './packs.ts';
 import { broadcastPresence, disconnectMember, emitAll, emitAway, emitRoom, emitToMember, onlineMemberIds, presence, publishRequest } from './live.ts';
-import { sarvamEnabled, SarvamError, toCard, transcribe, translate } from './sarvam.ts';
+import { READ_LANGUAGES, sarvamEnabled, SarvamError, toCard, transcribe, translate, translateAuto } from './sarvam.ts';
 import { signedInGuest, signInEnabled, SignInError } from './auth.ts';
 import { config } from './config.ts';
 import { gatheringView, proofView, requestView, storyView } from './views.ts';
@@ -613,6 +615,41 @@ app.post('/api/gatherings/:id/hichki', async (req) => {
   if (!held) emitAway(g.id, 'hichki', payload);
   emitAll(g.id, 'hichki:sent', { ...payload, held });
   return { ok: true };
+});
+
+// ---------------------------------------------------------------------------
+// Read in your own language. Anyone in the gathering can ask for texts in their
+// chosen language; each text is translated once per language, then cached.
+// ---------------------------------------------------------------------------
+
+app.post('/api/gatherings/:id/translate', async (req) => {
+  const g = findGathering((req.params as { id: string }).id);
+  requireCaller(req, g, 'guest', 'host', 'away');
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const target = clean(body.target, 10);
+  if (!READ_LANGUAGES.includes(target)) throw new HttpError(400, 'Pick a language to read in.');
+  const texts = Array.isArray(body.texts) ? body.texts.filter((t): t is string => typeof t === 'string' && !!t.trim()).slice(0, 30) : [];
+
+  const out: Record<string, string> = {};
+  for (const text of texts) {
+    const source = text.trim().slice(0, 1000);
+    const cached = cachedTranslation(source, target);
+    if (cached !== undefined) {
+      out[text] = cached;
+      continue;
+    }
+    if (!sarvamEnabled) continue;
+    try {
+      const result = await translateAuto(source, target);
+      if (result) {
+        saveTranslation(source, target, result);
+        out[text] = result;
+      }
+    } catch (err) {
+      req.log.warn({ event: 'translate_failed', err: (err as Error).message }, 'translation failed');
+    }
+  }
+  return { target, translations: out };
 });
 
 // ---------------------------------------------------------------------------

@@ -687,3 +687,8 @@ a.btn, a.banner { text-decoration: none; }
 .hear-ask { display: grid; gap: 4px; }
 .hear-ask audio { width: 100%; }
 .room-hichki { display: grid; justify-items: center; gap: 4px; }
+
+/* ---------- Reading language ---------- */
+.original-toggle { margin-left: 8px; font: inherit; font-family: var(--font-body); font-size: 12.5px; color: var(--rice-soft); background: transparent; border: 0; padding: 0; text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; vertical-align: middle; }
+.lang-picker { margin-top: 4px; }
+.lang-first { display: grid; gap: 10px; }

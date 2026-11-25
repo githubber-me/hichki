@@ -226,6 +226,10 @@ io({ auth: { gatheringId, role: 'away', token } })       // away person
 
 Phones that were closed miss events. When a page becomes visible again, fetch the feed again.
 
+## Reading in your own language
+
+`POST /api/gatherings/:id/translate` (guest, host or away): `{ texts: string[], target }`, up to 30 texts. `target` is one of `hi-IN`, `bn-IN`, `gu-IN`, `kn-IN`, `ml-IN`, `mr-IN`, `od-IN`, `pa-IN`, `ta-IN`, `te-IN`, `en-IN`. Returns `{ target, translations: { [text]: translated } }`. Uses Sarvam's `mayura:v1` with the source detected automatically, and caches each text per language, so a text is only ever translated once. Each phone keeps its reader's choice; the original is always shown on request.
+
 ## Duty pe and the away person's clock
 
 | Route | Who | Body | Returns |

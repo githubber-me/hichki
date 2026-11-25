@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from 'react';
 import type { CatchUp, Feed, PublicGathering, RoomApi } from './api.ts';
+import { T } from './lang.tsx';
 
 // "Toronto" from "America/Toronto".
 function placeOf(tz: string) {
@@ -164,7 +165,7 @@ export function CatchUpCard({ api, feed, catchUp, onDone }: { api: RoomApi; feed
               .slice(0, 3)
               .map((h) => (
                 <p key={h.at} className="muted small">
-                  {h.from}: <em>{h.note}</em>
+                  {h.from}: <em><T text={h.note} /></em>
                 </p>
               ))}
           </div>

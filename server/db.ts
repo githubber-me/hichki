@@ -128,6 +128,24 @@ for (const [column, type] of [
   if (!gatheringColumns.some((c) => c.name === column)) db.exec(`ALTER TABLE gatherings ADD COLUMN ${column} ${type}`);
 }
 
+// Translations, cached: each text is translated once per language.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS translations (
+    source  TEXT NOT NULL,
+    target  TEXT NOT NULL,
+    result  TEXT NOT NULL,
+    PRIMARY KEY (source, target)
+  );
+`);
+
+export function cachedTranslation(source: string, target: string): string | undefined {
+  return (db.prepare('SELECT result FROM translations WHERE source = ? AND target = ?').get(source, target) as { result: string } | undefined)?.result;
+}
+
+export function saveTranslation(source: string, target: string, result: string) {
+  db.prepare('INSERT OR REPLACE INTO translations (source, target, result) VALUES (?, ?, ?)').run(source, target, result);
+}
+
 // A hichki can carry a short line: "I thought of you when Dadi started singing".
 const hichkiColumns = db.prepare('PRAGMA table_info(hichkis)').all() as { name: string }[];
 if (!hichkiColumns.some((c) => c.name === 'note')) db.exec('ALTER TABLE hichkis ADD COLUMN note TEXT');

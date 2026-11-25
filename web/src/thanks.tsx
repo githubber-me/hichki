@@ -3,6 +3,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { Proof, RoomApi } from './api.ts';
+import { T } from './lang.tsx';
 import { RecordButton, MicIcon, uploadRecording } from './parts.tsx';
 
 const VIDEO_SECONDS = 20;
@@ -13,7 +14,11 @@ export function ThanksView({ thanks, from }: { thanks: NonNullable<Proof['thanks
   return (
     <div className="thanks">
       <p className="eyebrow">{from} said thank you</p>
-      {thanks.text && <p className="thanks-text">&ldquo;{thanks.text}&rdquo;</p>}
+      {thanks.text && (
+        <p className="thanks-text">
+          &ldquo;<T text={thanks.text} />&rdquo;
+        </p>
+      )}
       {thanks.url && thanks.media === 'video' && <video className="thanks-video" src={thanks.url} controls playsInline preload="metadata" />}
       {thanks.url && thanks.media === 'audio' && <audio src={thanks.url} controls preload="none" />}
     </div>

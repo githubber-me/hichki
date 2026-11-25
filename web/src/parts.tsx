@@ -2,6 +2,7 @@
 // Class names here are styled by theme.css.
 
 import { Camera } from './camera.tsx';
+import { T, useLang } from './lang.tsx';
 import { useState, type ReactNode } from 'react';
 import type { HichkiEntry, Presence, Proof, RoomApi, Story } from './api.ts';
 import { recordingName, shrinkPhoto, useRecorder } from './recorder.ts';
@@ -167,7 +168,7 @@ export function HichkiTimeline({ entries, awayName, me, limit = 5 }: { entries: 
             <span className="tl-dot" aria-hidden="true" />
             <p>
               <b>{h.memberId && h.memberId === me ? 'You' : h.from}</b> thought of {awayName}
-              {h.note ? <> {h.note.startsWith('when') || h.note.startsWith('while') ? '' : '\u00b7 '}<em>{h.note}</em></> : null}
+              {h.note ? <> {h.note.startsWith('when') || h.note.startsWith('while') ? '' : '\u00b7 '}<em><T text={h.note} /></em></> : null}
             </p>
             <time dateTime={new Date(h.at).toISOString()}>{clock(h.at)}</time>
           </li>
@@ -297,7 +298,7 @@ export function Stories({ api, stories, canRecord = true }: { api: RoomApi; stor
               {s.transcript}
             </p>
           )}
-          {s.translation && <p className="story-translation">{s.translation}</p>}
+          <StoryTranslation story={s} />
         </article>
       ))}
     </section>
@@ -315,9 +316,25 @@ export function StoryWords({ story }: { story: Story }) {
           {story.transcript}
         </p>
       )}
-      {story.translation && story.translation !== story.transcript && <p className="story-translation">{story.translation}</p>}
+      <StoryTranslation story={story} />
     </>
   );
+}
+
+// The story in the reader's language: their chosen one if they picked one, else
+// the translation made when it was told. The original transcript stays above it.
+function StoryTranslation({ story }: { story: Story }) {
+  const { lang } = useLang();
+  if (lang && story.transcript) {
+    if (story.language === lang) return null;
+    return (
+      <p className="story-translation">
+        <T text={story.transcript} toggle={false} />
+      </p>
+    );
+  }
+  if (!story.translation || story.translation === story.transcript) return null;
+  return <p className="story-translation">{story.translation}</p>;
 }
 
 // Bottom tabs. Each screen decides which ones it has.

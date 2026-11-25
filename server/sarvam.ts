@@ -230,6 +230,24 @@ export async function translate(text: string, source: string, target: string): P
   return out.join(' ').trim();
 }
 
+// For reading in your own language: the source can be any mix (Hindi, Hinglish,
+// English), so this uses mayura:v1, which detects it. Up to 1,000 characters a call.
+export const READ_LANGUAGES = ['hi-IN', 'bn-IN', 'gu-IN', 'kn-IN', 'ml-IN', 'mr-IN', 'od-IN', 'pa-IN', 'ta-IN', 'te-IN', 'en-IN'];
+
+export async function translateAuto(text: string, target: string): Promise<string> {
+  const parts = splitText(text, 900);
+  const out: string[] = [];
+  for (const part of parts) {
+    const body = await call('/translate', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ input: part, source_language_code: 'auto', target_language_code: target, model: 'mayura:v1' }),
+    });
+    out.push(String(body.translated_text ?? ''));
+  }
+  return out.join(' ').trim();
+}
+
 function splitText(text: string, max: number): string[] {
   const sentences = text.match(/[^.!?।]+[.!?।]*\s*/g) ?? [text];
   const parts: string[] = [];

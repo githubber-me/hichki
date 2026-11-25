@@ -4,6 +4,7 @@ import { useRoom } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
 import { AwayClock, DutyBanner } from '../duty.tsx';
 import { ActivityStrip, Moments } from '../moments.tsx';
+import { LangPicker, LangProvider, T, saveLang, savedLang, useLang } from '../lang.tsx';
 import type { Hichki } from '../live.ts';
 import { HichkiButton, Leaderboard, MicIcon, PhotoButton, RecordButton, Tabs, clock, uploadPhoto, uploadRecording } from '../parts.tsx';
 
@@ -143,6 +144,7 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
   const nameOf = (id: string | null) => feed.presence.members.find((m) => m.id === id)?.name;
 
   return (
+    <LangProvider gatheringId={gathering.id} api={roomApi}>
     <main className="screen has-tabs">
       <header className="room-head">
         <h1>{gathering.name}</h1>
@@ -217,6 +219,7 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
       {tab === 'people' && (
         <>
           <Profile api={roomApi} gatheringId={gathering.id} me={feed.presence.members.find((m) => m.id === member.id) ?? member} />
+          <ReadIn />
           <Leaderboard presence={feed.presence} me={member.id} limit={10} />
           <MemberList presence={feed.presence} me={member.id} />
         </>
@@ -232,6 +235,7 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
         onChange={setTab}
       />
     </main>
+    </LangProvider>
   );
 }
 
@@ -264,7 +268,9 @@ function RequestCard({
         {request.kind === 'see' ? `${away} wants to see` : `${away} asks, on their behalf`}
         {request.nomineeId === me ? ' · asked for you by name' : nominee ? ` · asked ${nominee}` : ''}
       </p>
-      <p className="request-text">{request.text}</p>
+      <p className="request-text">
+        <T text={request.text} />
+      </p>
       {request.textOriginal && request.textOriginal !== request.text && (
         <p className="request-original" lang={request.language ?? undefined}>
           {request.textOriginal}
@@ -308,7 +314,11 @@ function LetterCard({ letter, proofs, api: roomApi, away, me }: { letter: Req; p
       <article className="card letter-card is-open">
         <p className="eyebrow">A letter from {away}{letter.openWhen ? ` · for when ${letter.openWhen}` : ''}</p>
         {letter.audioUrl && <audio src={letter.audioUrl} controls preload="none" />}
-        {(letter.transcript || letter.text) && <p className="request-text">{letter.transcript || letter.text}</p>}
+        {(letter.transcript || letter.text) && (
+          <p className="request-text">
+            <T text={letter.transcript || letter.text} />
+          </p>
+        )}
       </article>
     );
   }
@@ -471,6 +481,7 @@ function Welcome({
   onDone: () => void;
 }) {
   const roomApiForMe = roomApi(gathering.id, { role: 'guest', memberId: member.id });
+  const [lang, setLang] = useState(() => savedLang(gathering.id));
   const [name, setName] = useState(member.name);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -557,6 +568,15 @@ function Welcome({
         </label>
         {member.verified && <p className="badge badge-verified">verified</p>}
 
+        <LangPicker
+          value={lang}
+          onChange={(l) => {
+            setLang(l);
+            saveLang(gathering.id, l);
+          }}
+        />
+        <p className="muted small">Pick a language and every request and story is translated for you. The original is always one tap away.</p>
+
         {error && <p className="error">{error}</p>}
         <button className="btn btn-primary" disabled={busy}>
           {busy ? 'One moment\u2026' : 'Continue'}
@@ -621,7 +641,9 @@ function StoryRequestCard({ request, proofs, api: roomApi, away, me }: { request
   return (
     <article className="card request-card kind-story">
       <p className="eyebrow">{away} asks for a story</p>
-      <p className="request-text">{request.text}</p>
+      <p className="request-text">
+        <T text={request.text} />
+      </p>
       {request.textOriginal && request.textOriginal !== request.text && (
         <p className="request-original" lang={request.language ?? undefined}>
           {request.textOriginal}
@@ -661,4 +683,10 @@ function HearAsk({ request, away }: { request: Req; away: string }) {
       <audio src={request.audioUrl} controls preload="none" />
     </div>
   );
+}
+
+// Change the reading language later, from People.
+function ReadIn() {
+  const { lang, setLang } = useLang();
+  return <LangPicker value={lang} onChange={setLang} />;
 }

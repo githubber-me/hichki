@@ -86,6 +86,7 @@ Hichki was built from scratch, in one day, at [Festive Hacks](https://www.wemake
 - [x] Someone on duty gets everything they missed, the moment their shift ends
 - [x] When it's over, everything that happened is kept on one page to relive and share
 - [x] Hosts who want to know exactly who's in can ask guests to sign in
+- [x] Everyone can read requests, letters and stories in their own language, with the original one tap away
 
 ## Made with
 
@@ -107,7 +108,6 @@ The photos, voices and stories shared at a gathering are kept on our own server,
 
 ## What's next
 
-- Each guest reading every request in their own language, not just the stories.
 - Notifications that reach a phone even when Hichki isn't open.
 - A printed table card with the QR code, for the host to put out.
 - An experiment, already wired to Flagsmith, on whether asking one named cousin gets a request answered faster than asking the whole room.

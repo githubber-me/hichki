@@ -204,6 +204,8 @@ export function roomApi(id: string, who: Who) {
     setDuty: (until: number | null, note?: string) => call<{ gathering: PublicGathering }>('POST', `${g}/duty`, { until, note }),
     seen: () => call<{ ok: true }>('POST', `${g}/seen`, {}),
     setAwayTz: (tz: string) => call<{ ok: true }>('POST', `${g}/away-tz`, { tz }),
+    translate: (texts: string[], target: string) =>
+      call<{ target: string; translations: Record<string, string> }>('POST', `${g}/translate`, { texts, target }),
     hichkiRoom: (note?: string) => call<{ ok: true }>('POST', `${g}/hichki-room`, note ? { note } : {}),
     hichkiBack: (memberId: string) => call<{ ok: true }>('POST', `${g}/hichki-back`, { memberId }),
     // Host only.

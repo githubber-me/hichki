@@ -5,6 +5,7 @@ import { MemberList } from './MemberList.tsx';
 import { CatchUpCard, DutyControl } from '../duty.tsx';
 import { SoundPrimer, playHichki, useWakeLock } from '../device.tsx';
 import { ActivityStrip, Moments } from '../moments.tsx';
+import { LangPicker, LangProvider, T, useLang } from '../lang.tsx';
 import { ThanksComposer, ThanksView } from '../thanks.tsx';
 import { Yaadein } from './Yaadein.tsx';
 import { StoryWords, Leaderboard, MicIcon, ProofView, RecordButton, Tabs, ago, clock, uploadRecording } from '../parts.tsx';
@@ -57,6 +58,7 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
   tabs.push(['people', `People (${feed.presence.members.length})`]);
 
   return (
+    <LangProvider gatheringId={id} api={api}>
     <main className="screen has-tabs away">
       <header className="room-head">
         <p className="eyebrow">{g.name}</p>
@@ -73,6 +75,7 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
       <SoundPrimer />
       <HichkiMoment hichki={room.hichki} />
       {feed.catchUp && !caughtUp && <CatchUpCard api={api} feed={feed} catchUp={feed.catchUp} onDone={() => setCaughtUp(true)} />}
+      {tab === 'ask' && <FirstLanguage gatheringId={id} />}
       {tab === 'ask' && <ActivityStrip feed={feed} />}
 
       {tab === 'ask' && (
@@ -88,6 +91,7 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
       {tab === 'people' && (
         <>
           {feed.flags.hichki && <RoomHichki api={api} />}
+          <AwayReadIn />
           <Leaderboard presence={feed.presence} limit={10} />
           <MemberList presence={feed.presence} onHichki={feed.flags.hichki ? (mid) => api.hichkiBack(mid) : undefined} />
         </>
@@ -95,6 +99,7 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
 
       <Tabs<Tab> tabs={tabs} value={tab === 'letters' && !feed.flags.jab_kholna ? 'ask' : tab} onChange={setTab} />
     </main>
+    </LangProvider>
   );
 }
 
@@ -120,7 +125,7 @@ function HichkiMoment({ hichki }: { hichki: Hichki | null }) {
           किसी ने याद किया
         </p>
         <p className="muted">
-          {show.from} thought of you, just now{show.note ? <>, <em>{show.note}</em></> : null}
+          {show.from} thought of you, just now{show.note ? <>, <em><T text={show.note} toggle={false} /></em></> : null}
         </p>
       </div>
     </div>
@@ -538,4 +543,33 @@ function RoomHichki({ api }: { api: RoomApi }) {
       {msg && <p className="muted small" aria-live="polite">{msg}</p>}
     </div>
   );
+}
+
+// The same question guests get on joining, asked once on the away person's first visit.
+function FirstLanguage({ gatheringId }: { gatheringId: string }) {
+  const { lang, setLang } = useLang();
+  const [asked, setAsked] = useState(() => localStorage.getItem(`hichki:lang:${gatheringId}`) !== null);
+  if (asked) return null;
+  return (
+    <section className="card lang-first">
+      <p className="eyebrow">One question first</p>
+      <LangPicker value={lang} onChange={setLang} label="How would you like to read what people send?" />
+      <p className="muted small">Pick your language and everything is translated for you, with the original one tap away. You can change this in People.</p>
+      <button
+        type="button"
+        className="btn btn-primary"
+        onClick={() => {
+          setLang(lang);
+          setAsked(true);
+        }}
+      >
+        Done
+      </button>
+    </section>
+  );
+}
+
+function AwayReadIn() {
+  const { lang, setLang } = useLang();
+  return <LangPicker value={lang} onChange={setLang} />;
 }

@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import type { Feed, Proof, Req, RoomApi } from './api.ts';
 import { HichkiTimeline, ProofView, Stories, StoryWords, clock } from './parts.tsx';
 import { ThanksView } from './thanks.tsx';
+import { T } from './lang.tsx';
 
 const RECENT_MS = 15 * 60 * 1000;
 const HIGHLIGHTS = 6;
@@ -193,7 +194,9 @@ export function Moments({ feed, api, me, canRecord }: { feed: Feed; api: RoomApi
             const story = won ? storyFor(r, won) : undefined;
             return (
               <article key={r.id} className="card done-card">
-                <p className="request-text">{r.text}</p>
+                <p className="request-text">
+                  <T text={r.text} />
+                </p>
                 {won && <ProofView proof={won} />}
                 {story && <StoryWords story={story} />}
                 {won && (
@@ -246,7 +249,11 @@ export function Moments({ feed, api, me, canRecord }: { feed: Feed; api: RoomApi
             <article key={r.id} className="card letter-card is-open">
               <p className="eyebrow">A letter from {away}{r.openWhen ? ` · for when ${r.openWhen}` : ''}</p>
               {r.audioUrl && <audio src={r.audioUrl} controls preload="none" />}
-              {(r.transcript || r.text) && <p className="request-text">{r.transcript || r.text}</p>}
+              {(r.transcript || r.text) && (
+                <p className="request-text">
+                  <T text={r.transcript || r.text} />
+                </p>
+              )}
             </article>
           ))
         ))}
