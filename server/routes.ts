@@ -35,6 +35,7 @@ import {
   type Member,
   type RequestKind,
   type RequestRow,
+  type ProofRow,
   memberByDevice,
   memberWithName,
   removeMember,
@@ -45,6 +46,8 @@ import {
   markAwaySeen,
   setAwayTz,
   setThanks,
+  setLoved,
+  setAside,
   listHichkisSince,
   recentHichkis,
   cachedTranslation,
@@ -53,7 +56,7 @@ import {
 import { isOwnFile, mediaOf, mediaUrl, saveUpload, UploadError } from './files.ts';
 import { flagStatus, flags, packs, requestMode, trackFulfilled } from './flags.ts';
 import { packFor } from './packs.ts';
-import { broadcastPresence, disconnectMember, emitAll, emitAway, emitRoom, emitToMember, onlineMemberIds, presence, publishRequest } from './live.ts';
+import { broadcastPresence, disconnectMember, emitAll, emitAway, emitRoom, emitSplit, emitToMember, onlineMemberIds, presence, publishRequest } from './live.ts';
 import { READ_LANGUAGES, sarvamEnabled, SarvamError, toCard, transcribe, translate, translateAuto } from './sarvam.ts';
 import { signedInGuest, signInEnabled, SignInError } from './auth.ts';
 import { config } from './config.ts';
@@ -336,7 +339,7 @@ app.get('/api/gatherings/:id/feed', async (req) => {
     requests: listRequests(g.id)
       .map((r) => requestView(r, viewer))
       .filter((r) => r !== null),
-    proofs: listProofs(g.id).map((p) => proofView(p, names.get(p.member_id) ?? 'Someone')),
+    proofs: listProofs(g.id).map((p) => proofView(p, names.get(p.member_id) ?? 'Someone', viewer)),
     stories: listStories(g.id).map(storyView),
     now: Date.now(),
   };
@@ -471,6 +474,46 @@ function pickNominee(gatheringId: string): string | null {
   return candidates[0].id;
 }
 
+// A proof changed: the room gets it without "set aside", the away person with it.
+function publishProof(p: ProofRow) {
+  const name = memberName(p.member_id);
+  emitSplit(findRequest(p.request_id).gathering.id, 'proof', proofView(p, name, 'room'), proofView(p, name, 'away'));
+}
+
+const POINTS_FOR_LOVE = 5;
+
+// Hearts: the away person loves any number of answers. +5 each, and the sender hears about it.
+app.post('/api/proofs/:pid/love', async (req) => {
+  const proof = getProof((req.params as { pid: string }).pid);
+  if (!proof) throw new HttpError(404, 'That answer doesn\u2019t exist.');
+  const { request, gathering } = findRequest(proof.request_id);
+  requireCaller(req, gathering, 'away');
+  const loved = ((req.body ?? {}) as Record<string, unknown>).loved !== false;
+  if (loved === !!proof.loved_at) return { proof: proofView(proof, memberName(proof.member_id), 'away') };
+
+  setLoved(proof.id, loved);
+  addPoints(proof.member_id, loved ? POINTS_FOR_LOVE : -POINTS_FOR_LOVE);
+  const updated = getProof(proof.id)!;
+  req.log.info({ event: loved ? 'proof_loved' : 'proof_unloved', gatheringId: gathering.id }, 'love changed');
+  publishProof(updated);
+  if (loved) await emitToMember(gathering.id, updated.member_id, 'loved', { from: gathering.away_name, proofId: proof.id, requestText: request.text, points: POINTS_FOR_LOVE });
+  broadcastPresence(gathering.id);
+  return { proof: proofView(updated, memberName(updated.member_id), 'away') };
+});
+
+// Set aside: fold an answer away on the away person's screen. Nobody else is told.
+app.post('/api/proofs/:pid/set-aside', async (req) => {
+  const proof = getProof((req.params as { pid: string }).pid);
+  if (!proof) throw new HttpError(404, 'That answer doesn\u2019t exist.');
+  const { gathering } = findRequest(proof.request_id);
+  requireCaller(req, gathering, 'away');
+  setAside(proof.id, ((req.body ?? {}) as Record<string, unknown>).aside !== false);
+  const updated = getProof(proof.id)!;
+  // Only the away person's own screens hear about it.
+  emitAway(gathering.id, 'proof', proofView(updated, memberName(updated.member_id), 'away'));
+  return { proof: proofView(updated, memberName(updated.member_id), 'away') };
+});
+
 // The away person thanks whoever sent the proof they picked: a line of text, or a
 // voice or video note (upload it first). The sender's phone hears about it at once.
 app.post('/api/proofs/:pid/thanks', async (req) => {
@@ -490,9 +533,9 @@ app.post('/api/proofs/:pid/thanks', async (req) => {
 
   setThanks(proof.id, text, file);
   const updated = getProof(proof.id)!;
-  const view = proofView(updated, memberName(updated.member_id));
+  const view = proofView(updated, memberName(updated.member_id), 'away');
   req.log.info({ event: 'thanks_sent', gatheringId: gathering.id, media: file ? mediaOf(file) : 'text' }, 'thank-you sent');
-  emitAll(gathering.id, 'proof', view);
+  publishProof(updated);
   await emitToMember(gathering.id, updated.member_id, 'thanks', { from: gathering.away_name, proofId: proof.id, requestText: request.text });
   return { proof: view };
 });

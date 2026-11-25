@@ -48,8 +48,12 @@ export function requestView(r: RequestRow, viewer: Viewer) {
   };
 }
 
-export function proofView(p: ProofRow, memberName: string) {
+export function proofView(p: ProofRow, memberName: string, viewer: Viewer = 'room') {
   return {
+    // Hearts are public; "set aside" is only ever shown to the away person.
+    loved: !!p.loved_at,
+    lovedAt: p.loved_at ?? null,
+    setAside: viewer === 'away' ? !!p.set_aside : false,
     id: p.id,
     requestId: p.request_id,
     memberId: p.member_id,

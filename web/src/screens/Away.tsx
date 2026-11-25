@@ -346,18 +346,47 @@ function MyRequest({ request, proofs, stories, api, now }: { request: Req; proof
 
       {request.status === 'open' && proofs.length > 0 && (
         <>
-          <p className="muted small">Pick the one you love. That person gets 10 points.</p>
+          <p className="muted small">Love as many as you like (+5 each), and pick your favourite (+10).</p>
           <ul className="proof-grid">
-            {proofs.map((p) => (
+            {proofs.filter((p) => !p.setAside).map((p) => (
               <li key={p.id}>
                 <ProofView proof={p} />
                 {storyOf(p) && <StoryWords story={storyOf(p)!} />}
+                <div className="proof-actions">
+                  <button
+                    type="button"
+                    className={`btn btn-quiet btn-small love ${p.loved ? 'is-loved' : ''}`}
+                    aria-pressed={p.loved}
+                    disabled={busy}
+                    onClick={() => run(() => api.love(p.id, !p.loved))}
+                  >
+                    {p.loved ? '\u2665 Loved' : '\u2661 Love'}
+                  </button>
+                  <button type="button" className="btn btn-quiet btn-small" disabled={busy} onClick={() => run(() => api.setAside(p.id, true))}>
+                    Set aside
+                  </button>
+                </div>
                 <button type="button" className="btn btn-primary" disabled={busy} onClick={() => run(() => api.accept(request.id, p.id))}>
                   Pick {p.memberName}&rsquo;s
                 </button>
               </li>
             ))}
           </ul>
+          {proofs.some((p) => p.setAside) && (
+            <details className="set-aside">
+              <summary>Set aside ({proofs.filter((p) => p.setAside).length}). Only you can see these.</summary>
+              <ul className="proof-grid">
+                {proofs.filter((p) => p.setAside).map((p) => (
+                  <li key={p.id}>
+                    <ProofView proof={p} />
+                    <button type="button" className="btn btn-quiet btn-small" disabled={busy} onClick={() => run(() => api.setAside(p.id, false))}>
+                      Bring back
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </>
       )}
 
@@ -366,6 +395,11 @@ function MyRequest({ request, proofs, stories, api, now }: { request: Req; proof
           <ProofView proof={won} />
           {storyOf(won) && <StoryWords story={storyOf(won)!} />}
           <p className="muted small">From {won.memberName}.</p>
+          {proofs.some((p) => p.loved && p.id !== won.id) && (
+            <p className="muted small">
+              You also loved {proofs.filter((p) => p.loved && p.id !== won.id).map((p) => p.memberName).join(', ')}.
+            </p>
+          )}
           {won.thanks ? <ThanksView thanks={won.thanks} from="You" /> : <ThanksComposer api={api} proof={won} />}
         </>
       )}

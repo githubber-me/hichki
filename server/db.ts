@@ -160,6 +160,10 @@ for (const [column, type] of [
   ['thanks_text', 'TEXT'],
   ['thanks_file', 'TEXT'],
   ['thanks_at', 'INTEGER'],
+  // Hearts: the away person can love any number of answers (+5 each).
+  ['loved_at', 'INTEGER'],
+  // Set aside: folded away on the away person's screen only. The sender is never told.
+  ['set_aside', 'INTEGER'],
 ] as const) {
   if (!proofColumns.some((c) => c.name === column)) db.exec(`ALTER TABLE proofs ADD COLUMN ${column} ${type}`);
 }
@@ -513,7 +517,17 @@ export type ProofRow = {
   thanks_text?: string | null;
   thanks_file?: string | null;
   thanks_at?: number | null;
+  loved_at?: number | null;
+  set_aside?: number | null;
 };
+
+export function setLoved(proofId: string, loved: boolean) {
+  db.prepare('UPDATE proofs SET loved_at = ?, set_aside = CASE WHEN ? THEN 0 ELSE set_aside END WHERE id = ?').run(loved ? Date.now() : null, loved ? 1 : 0, proofId);
+}
+
+export function setAside(proofId: string, aside: boolean) {
+  db.prepare('UPDATE proofs SET set_aside = ? WHERE id = ?').run(aside ? 1 : 0, proofId);
+}
 
 export function setThanks(proofId: string, text: string | null, file: string | null) {
   db.prepare('UPDATE proofs SET thanks_text = ?, thanks_file = ?, thanks_at = ? WHERE id = ?').run(text, file, Date.now(), proofId);

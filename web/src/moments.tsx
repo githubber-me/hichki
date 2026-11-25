@@ -51,6 +51,9 @@ export function buildActivity(feed: Feed, me?: string): Activity[] {
         rank: r.kind === 'letter' ? 2 : p.media === 'photo' ? 1 : 3,
       });
     }
+    if (p.lovedAt) {
+      out.push({ at: p.lovedAt, key: `v${p.id}`, text: `${away} loved ${p.memberId === me ? 'your' : `${p.memberName}’s`} answer to “${shortText(r.text)}”`, image: p.media === 'photo' ? p.url : undefined, rank: 1.5 });
+    }
     if (p.thanks) {
       out.push({ at: p.thanks.at, key: `t${p.id}`, text: `${away} said thank you to ${who(p.memberId, p.memberName)}`, note: p.thanks.text, rank: 4 });
     }
@@ -216,11 +219,11 @@ export function Moments({ feed, api, me, canRecord }: { feed: Feed; api: RoomApi
         ) : (
           <ul className="photo-grid">
             {photos.map((p) => (
-              <li key={p.id} className={picked(p) ? 'is-picked' : ''}>
+              <li key={p.id} className={picked(p) ? 'is-picked' : p.loved ? 'is-loved' : ''}>
                 <ProofView proof={p} />
                 <p className="small">
                   {p.memberId === me ? 'You' : p.memberName}
-                  {picked(p) ? ` · ${away} picked it` : ''}
+                  {picked(p) ? ` · ${away} picked it` : p.loved ? ` · ♥ ${away} loved it` : ''}
                 </p>
               </li>
             ))}

@@ -157,6 +157,11 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
 
       <DutyBanner gathering={feed.gathering} />
       <HichkiBack moment={room.hichkiBack} />
+      {room.loved && (
+        <p className="banner celebrate" role="status" key={`l${room.loved.proofId}`}>
+          {away} loved your answer to &ldquo;{room.loved.requestText}&rdquo;. +{room.loved.points}
+        </p>
+      )}
       {room.thanks && (
         <p className="banner celebrate" role="status" key={room.thanks.proofId}>
           {away} said thank you for &ldquo;{room.thanks.requestText}&rdquo;. It&rsquo;s in Moments.
