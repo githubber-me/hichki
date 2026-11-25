@@ -66,13 +66,13 @@ Each one appears at the gathering exactly when she wanted it to. Her link keeps 
 
 ## In your family's language
 
-Hichki is Hichki everywhere. It's never swapped for another word, only written in the room's own script: हिचकी in a Hindi room, ಹಿಚ್ಕಿ in a Kannada room, ஹிச்கி in a Tamil one, Hichki in English. Almost every Indian language has the same belief about hiccups. The host picks the room's language, and the names of everything else follow it, written the way people type on their phones: *Jab kholna* in Hindi becomes *Open when* in English, *Yaavaga terebeku* in Kannada, *Eppo thirakkanum* in Tamil. On top of that, each person can read every request and story in their own language.
+Hichki is Hichki everywhere. It's never swapped for another word, only written in the room's own script: हिचकी in a Hindi room, ಹಿಚ್ಕಿ in a Kannada room, ஹிச்கி in a Tamil one, Hichki in English. Almost every Indian language has the same belief about hiccups. The host picks the room's language, and the names of everything else follow it, written the way people type on their phones: *Jab kholna* in Hindi becomes *Open when* in English, *Yaavaga terebeku* in Kannada, *Eppo thirakkanum* in Tamil. The host can also have every request, letter and story shown translated into the family's language, with the original one tap away.
 
 ## Not just weddings
 
 Hichki works for any gathering where someone is missing: Diwali at home, Christmas dinner, New Year's Eve, Eid, a family trip, a birthday.
 
-It also works for the people who keep the world running while everyone else celebrates. The nurse on a night shift. The soldier at a posting. The delivery rider working through the holiday. We call this **Duty pe** (on duty). One tap tells the room you're on a shift until 6 AM. Nothing buzzes you at work: every hichki is kept, and when your shift ends you see who thought of you, and what you missed, first. They can't be there, but they don't have to miss it.
+It also works for the people who keep the world running while everyone else celebrates. Tell Hichki why someone can't come, and it adapts: a soldier gets one tap to go on duty for 24 hours and ideas like *"Keep my seat at the table, and send me a photo of it"*; a nurse gets her night shift ready; a cousin whose visa didn't come through gets *"Show me everything the way I'd have seen it walking in"*. The nurse on a night shift. The soldier at a posting. The delivery rider working through the holiday. We call this **Duty pe** (on duty). One tap tells the room you're on a shift until 6 AM. Nothing buzzes you at work: every hichki is kept, and when your shift ends you see who thought of you, and what you missed, first. They can't be there, but they don't have to miss it.
 
 The room always knows what time it is for you, too: *"It's 4:12 am for Meera in Toronto."*
 
@@ -90,7 +90,7 @@ Hichki was built from scratch, in one day, at [Festive Hacks](https://www.wemake
 - [x] Someone on duty gets everything they missed, the moment their shift ends
 - [x] When it's over, everything that happened is kept on one page to relive and share
 - [x] Hosts who want to know exactly who's in can ask guests to sign in
-- [x] Everyone can read requests, letters and stories in their own language, with the original one tap away
+- [x] The host can have requests, letters and stories translated for the whole room, with the original one tap away
 
 ## Made with
 

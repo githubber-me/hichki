@@ -9,6 +9,8 @@ export type PublicGathering = {
   verified: boolean; // guests must sign in to join
   awayTz: string | null; // the away person's timezone, from their phone
   roomLang: string; // language for feature names, see words.ts
+  readLang: string; // the whole room reads translated into this ('' = as said)
+  awayReason: string | null; // why the away person can't come: nurse, soldier, visa...
   duty: { from: number; until: number; note: string | null } | null; // Duty pe
 };
 export type Member = { id: string; name: string; points: number; avatarUrl?: string | null; verified?: boolean };
@@ -29,13 +31,21 @@ async function request<T>(path: string, body?: unknown, extraHeaders: Record<str
 }
 
 export const api = {
-  createGathering: (name: string, occasion: string, awayName: string, verified = false, roomLang = 'hi') =>
+  createGathering: (
+    name: string,
+    occasion: string,
+    awayName: string,
+    verified = false,
+    roomLang = 'hi',
+    more: { readLang?: string; awayReason?: string | null } = {},
+  ) =>
     request<{ gathering: PublicGathering; hostToken: string; awayToken: string }>('/api/gatherings', {
       name,
       occasion,
       awayName,
       verified,
       roomLang,
+      ...more,
     }),
   getGathering: (id: string) => request<{ gathering: PublicGathering }>(`/api/gatherings/${id}`),
   join: (id: string, name: string) =>
@@ -233,6 +243,8 @@ export function roomApi(id: string, who: Who) {
     hichkiBack: (memberId: string) => call<{ ok: true }>('POST', `${g}/hichki-back`, { memberId }),
     // Host only.
     setRoomLang: (lang: string) => call<{ gathering: PublicGathering }>('POST', `${g}/room-lang`, { lang }),
+    settings: (s: { roomLang?: string; readLang?: string; awayReason?: string | null }) =>
+      call<{ gathering: PublicGathering }>('POST', `${g}/settings`, s),
     removeMember: (memberId: string) => call<{ ok: true }>('DELETE', `${g}/members/${memberId}`),
     setVerified: (verified: boolean) => call<{ gathering: PublicGathering }>('POST', `${g}/verified`, { verified }),
     addStory: (file: string, teller: string, language?: string, targetLanguage?: string) =>

@@ -6,8 +6,8 @@ import { AwayClock, DutyBanner } from '../duty.tsx';
 import { ActivityStrip, Moments } from '../moments.tsx';
 import { Gallery } from '../gallery.tsx';
 import { VideoNote } from '../thanks.tsx';
-import { rememberedLine } from '../words.ts';
-import { LangPicker, LangProvider, T, saveLang, savedLang, useLang } from '../lang.tsx';
+import { reasonLine, rememberedLine } from '../words.ts';
+import { LangProvider, T } from '../lang.tsx';
 import type { Hichki } from '../live.ts';
 import { HichkiButton, Leaderboard, MicIcon, PhotoButton, RecordButton, Tabs, clock, uploadPhoto, uploadRecording } from '../parts.tsx';
 
@@ -147,7 +147,7 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
   const nameOf = (id: string | null) => feed.presence.members.find((m) => m.id === id)?.name;
 
   return (
-    <LangProvider gatheringId={gathering.id} api={roomApi}>
+    <LangProvider lang={feed.gathering.readLang ?? ''} api={roomApi}>
     <main className="screen has-tabs">
       <header className="room-head">
         <h1>{gathering.name}</h1>
@@ -156,6 +156,7 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
           {feed.presence.awayOnline ? `${away} is with you right now` : `${away} will see everything you send`}
         </p>
         <AwayClock gathering={feed.gathering} />
+        {reasonLine(feed.gathering.awayReason, away) && <p className="reason-line">{reasonLine(feed.gathering.awayReason, away)}</p>}
       </header>
 
       <DutyBanner gathering={feed.gathering} />
@@ -228,7 +229,6 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
       {tab === 'people' && (
         <>
           <Profile api={roomApi} gatheringId={gathering.id} me={feed.presence.members.find((m) => m.id === member.id) ?? member} />
-          <ReadIn />
           <Leaderboard presence={feed.presence} me={member.id} limit={10} />
           <MemberList presence={feed.presence} me={member.id} />
         </>
@@ -532,7 +532,6 @@ function Welcome({
   onDone: () => void;
 }) {
   const roomApiForMe = roomApi(gathering.id, { role: 'guest', memberId: member.id });
-  const [lang, setLang] = useState(() => savedLang(gathering.id));
   const [name, setName] = useState(member.name);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -618,15 +617,6 @@ function Welcome({
           />
         </label>
         {member.verified && <p className="badge badge-verified">verified</p>}
-
-        <LangPicker
-          value={lang}
-          onChange={(l) => {
-            setLang(l);
-            saveLang(gathering.id, l);
-          }}
-        />
-        <p className="muted small">Pick a language and every request and story is translated for you. The original is always one tap away.</p>
 
         {error && <p className="error">{error}</p>}
         <button className="btn btn-primary" disabled={busy}>
@@ -749,10 +739,4 @@ function HearAsk({ request, away }: { request: Req; away: string }) {
       <audio src={request.audioUrl} controls preload="none" />
     </div>
   );
-}
-
-// Change the reading language later, from People.
-function ReadIn() {
-  const { lang, setLang } = useLang();
-  return <LangPicker value={lang} onChange={setLang} />;
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, saved } from '../api.ts';
-import { HICHKI_SCRIPT, ROOM_LANGS } from '../words.ts';
+import { AWAY_REASONS, HICHKI_SCRIPT, ROOM_LANGS } from '../words.ts';
+import { READ_LANGUAGES } from '../lang.tsx';
 
 const OCCASIONS = ['wedding', 'diwali', 'christmas', 'new year', 'eid', 'birthday', 'trip', 'gathering'];
 
@@ -12,6 +13,8 @@ export function Create() {
   const [busy, setBusy] = useState(false);
   const [verified, setVerified] = useState(false);
   const [roomLang, setRoomLangChoice] = useState('hi');
+  const [readLang, setReadLang] = useState('');
+  const [awayReason, setAwayReason] = useState('');
   // The verified switch only appears when this server has sign-in set up.
   const [canVerify, setCanVerify] = useState(false);
   useEffect(() => {
@@ -26,7 +29,7 @@ export function Create() {
     }
     setBusy(true);
     try {
-      const { gathering, hostToken, awayToken } = await api.createGathering(name, occasion, awayName, verified, roomLang);
+      const { gathering, hostToken, awayToken } = await api.createGathering(name, occasion, awayName, verified, roomLang, { readLang, awayReason: awayReason || null });
       saved.setHostToken(gathering.id, hostToken);
       saved.setAwayToken(gathering.id, awayToken);
       location.href = `/g/${gathering.id}/host?t=${hostToken}`;
@@ -54,42 +57,71 @@ export function Create() {
         </label>
 
         <label className="field">
-          <span>Occasion</span>
-          <select value={occasion} onChange={(e) => setOccasion(e.target.value)}>
-            {OCCASIONS.map((o) => (
-              <option key={o} value={o}>
-                {o[0].toUpperCase() + o.slice(1)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="field">
           <span>Who couldn&rsquo;t come?</span>
           <input value={awayName} onChange={(e) => setAwayName(e.target.value)} placeholder="Meera" maxLength={40} />
         </label>
 
-        <label className="field">
-          <span>Language for the room</span>
-          <select value={roomLang} onChange={(e) => setRoomLangChoice(e.target.value)}>
-            {ROOM_LANGS.map(([code, name]) => (
-              <option key={code} value={code}>
-                {name}
-              </option>
-            ))}
-          </select>
-          <small className="muted">Names like Jab kholna and Dadi ki kahani follow this. Hichki stays Hichki.</small>
-        </label>
+        {/* Everything else is optional, and folded away. */}
+        <details className="more-settings">
+          <summary>Additional settings</summary>
 
-        {canVerify && (
-          <label className="switch">
-            <input type="checkbox" aria-label="Only verified guests" checked={verified} onChange={(e) => setVerified(e.target.checked)} />
-            <span>
-              <strong>Only verified guests</strong>
-              <small>Guests sign in with Google or their phone number, so nobody can join under someone else&rsquo;s name.</small>
-            </span>
+          <label className="field">
+            <span>Occasion</span>
+            <select value={occasion} onChange={(e) => setOccasion(e.target.value)}>
+              {OCCASIONS.map((o) => (
+                <option key={o} value={o}>
+                  {o[0].toUpperCase() + o.slice(1)}
+                </option>
+              ))}
+            </select>
           </label>
-        )}
+
+          <label className="field">
+            <span>Why can&rsquo;t {awayName.trim() || 'they'} come?</span>
+            <select value={awayReason} onChange={(e) => setAwayReason(e.target.value)}>
+              {AWAY_REASONS.map(([code, label]) => (
+                <option key={code} value={code}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <small className="muted">Nurses, doctors, soldiers and shift workers get Duty pe ready for them, and ideas made for their situation.</small>
+          </label>
+
+          <label className="field">
+            <span>Names of things in</span>
+            <select value={roomLang} onChange={(e) => setRoomLangChoice(e.target.value)}>
+              {ROOM_LANGS.map(([code, label]) => (
+                <option key={code} value={code}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <small className="muted">Jab kholna, Dadi ki kahani and the rest follow this. Hichki stays Hichki.</small>
+          </label>
+
+          <label className="field">
+            <span>Show everything in</span>
+            <select value={readLang} onChange={(e) => setReadLang(e.target.value)}>
+              {READ_LANGUAGES.map(([code, label]) => (
+                <option key={code} value={code}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <small className="muted">Requests, letters and stories are translated for everyone. The original is always one tap away.</small>
+          </label>
+
+          {canVerify && (
+            <label className="switch">
+              <input type="checkbox" aria-label="Only verified guests" checked={verified} onChange={(e) => setVerified(e.target.checked)} />
+              <span>
+                <strong>Only verified guests</strong>
+                <small>Guests sign in with Google or their phone number, so nobody can join under someone else&rsquo;s name.</small>
+              </span>
+            </label>
+          )}
+        </details>
 
         {error && <p className="error">{error}</p>}
 

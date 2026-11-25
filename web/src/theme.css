@@ -780,3 +780,16 @@ audio { accent-color: var(--haldi); }
 .viewer-bar { display: grid; gap: 10px; padding: 14px 18px calc(14px + env(safe-area-inset-bottom)); background: var(--wall-deep); }
 .viewer-caption { margin: 0; font-size: 15px; line-height: 1.4; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .viewer-actions { display: flex; justify-content: space-between; gap: 8px; }
+
+/* ---------- Create: additional settings ---------- */
+.more-settings { display: grid; gap: 14px; }
+.more-settings > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--rice-soft); padding: 4px 0; }
+.more-settings > summary::-webkit-details-marker { display: none; }
+.more-settings > summary::after { content: ''; width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translateY(-3px); transition: transform 0.2s var(--settle); }
+.more-settings[open] > summary::after { transform: rotate(-135deg) translateY(-1px); }
+.more-settings[open] > summary { color: var(--rice); margin-bottom: 4px; }
+.field small.muted { font-size: 12.5px; line-height: 1.35; letter-spacing: 0; text-transform: none; font-weight: 400; }
+.reason-line { margin: 4px 0 0; font-size: 14.5px; color: var(--rice-soft); font-style: italic; }
+.duty-ready p { margin: 0; line-height: 1.4; }
+/* A grid layout stops <details> hiding its contents in some browsers: hide them explicitly. */
+details:not([open]) > :not(summary) { display: none !important; }

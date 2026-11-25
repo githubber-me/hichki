@@ -46,6 +46,7 @@ import {
   markAwaySeen,
   setAwayTz,
   setRoomLang,
+  setSettings,
   setThanks,
   setLoved,
   setAside,
@@ -193,10 +194,10 @@ app.post('/api/gatherings', async (req) => {
   if (verified && !signInEnabled) throw new HttpError(400, 'Verified guests need sign-in, which isn\u2019t set up on this server.');
 
   const g = createGathering(name, occasion, awayName, verified);
-  const roomLang = clean(body.roomLang, 4);
-  if (ROOM_LANGS.includes(roomLang) && roomLang !== 'hi') {
-    setRoomLang(g.id, roomLang);
-    g.room_lang = roomLang;
+  const settings = readSettings(body);
+  if (Object.keys(settings).length) {
+    setSettings(g.id, settings);
+    Object.assign(g, findGathering(g.id));
   }
   req.log.info({ event: 'gathering_created', gatheringId: g.id, occasion }, 'gathering created');
   return { gathering: gatheringView(g), hostToken: g.host_token, awayToken: g.away_token };
@@ -310,6 +311,32 @@ app.post('/api/gatherings/:id/me', async (req) => {
 
 // The languages the feature names come in (see web/src/words.ts).
 const ROOM_LANGS = ['hi', 'en', 'kn', 'ta', 'te', 'bn', 'mr', 'gu', 'pa', 'ml'];
+
+const READ_LANGS = ['', 'en-IN', 'hi-IN', 'bn-IN', 'gu-IN', 'kn-IN', 'ml-IN', 'mr-IN', 'od-IN', 'pa-IN', 'ta-IN', 'te-IN'];
+const AWAY_REASONS = ['nurse', 'doctor', 'soldier', 'shift', 'visa', 'far', 'unwell', 'other'];
+
+// Host settings from a request body: only the ones given, only valid values.
+function readSettings(body: Record<string, unknown>) {
+  const out: { roomLang?: string; readLang?: string; awayReason?: string | null } = {};
+  if (typeof body.roomLang === 'string' && ROOM_LANGS.includes(body.roomLang)) out.roomLang = body.roomLang;
+  if (typeof body.readLang === 'string' && READ_LANGS.includes(body.readLang)) out.readLang = body.readLang;
+  if (body.awayReason === null || body.awayReason === '') out.awayReason = null;
+  else if (typeof body.awayReason === 'string' && AWAY_REASONS.includes(body.awayReason)) out.awayReason = body.awayReason;
+  return out;
+}
+
+// The host changes settings later: headings language, reading language, why the away person can't come.
+app.post('/api/gatherings/:id/settings', async (req) => {
+  const g = findGathering((req.params as { id: string }).id);
+  requireCaller(req, g, 'host');
+  const settings = readSettings((req.body ?? {}) as Record<string, unknown>);
+  if (Object.keys(settings).length === 0) throw new HttpError(400, 'Nothing to change.');
+  setSettings(g.id, settings);
+  const updated = findGathering(g.id);
+  req.log.info({ event: 'settings_changed', gatheringId: g.id, ...settings }, 'settings changed');
+  emitAll(g.id, 'gathering', gatheringView(updated));
+  return { gathering: gatheringView(updated) };
+});
 
 // The host changes the room's language for feature names.
 app.post('/api/gatherings/:id/room-lang', async (req) => {

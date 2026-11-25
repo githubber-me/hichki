@@ -126,6 +126,10 @@ for (const [column, type] of [
   ['away_tz', 'TEXT'],
   // The room's language for feature names ("Jab kholna" or "Open when"). Hindi by default.
   ['room_lang', "TEXT NOT NULL DEFAULT 'hi'"],
+  // Why the away person can't come: nurse, doctor, soldier, shift, visa, far, unwell, other.
+  ['away_reason', 'TEXT'],
+  // The whole room reads translated into this language ('' means as it was said).
+  ['read_lang', "TEXT NOT NULL DEFAULT ''"],
 ] as const) {
   if (!gatheringColumns.some((c) => c.name === column)) db.exec(`ALTER TABLE gatherings ADD COLUMN ${column} ${type}`);
 }
@@ -197,6 +201,8 @@ export type Gathering = {
   away_seen_at: number | null;
   away_tz: string | null;
   room_lang: string;
+  away_reason: string | null;
+  read_lang: string;
 };
 
 export type Member = {
@@ -241,6 +247,8 @@ export function createGathering(name: string, occasion: string, awayName: string
     away_seen_at: null,
     away_tz: null,
     room_lang: 'hi',
+    away_reason: null,
+    read_lang: '',
   };
   db.prepare(
     `INSERT INTO gatherings (id, name, occasion, away_name, host_token, away_token, created_at, verified)
@@ -274,6 +282,13 @@ export function setDuty(id: string, until: number | null, note: string | null) {
 // The away person has caught up: next time, only show what's new after now.
 export function markAwaySeen(id: string, at = Date.now()) {
   db.prepare('UPDATE gatherings SET away_seen_at = ?, duty_from = CASE WHEN duty_until <= ? THEN NULL ELSE duty_from END WHERE id = ?').run(at, at, id);
+}
+
+// Host settings that can change after creating the gathering.
+export function setSettings(id: string, s: { roomLang?: string; readLang?: string; awayReason?: string | null }) {
+  if (s.roomLang !== undefined) db.prepare('UPDATE gatherings SET room_lang = ? WHERE id = ?').run(s.roomLang, id);
+  if (s.readLang !== undefined) db.prepare('UPDATE gatherings SET read_lang = ? WHERE id = ?').run(s.readLang, id);
+  if (s.awayReason !== undefined) db.prepare('UPDATE gatherings SET away_reason = ? WHERE id = ?').run(s.awayReason, id);
 }
 
 export function setRoomLang(id: string, lang: string) {

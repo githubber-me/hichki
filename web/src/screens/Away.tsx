@@ -6,8 +6,8 @@ import { CatchUpCard, DutyControl } from '../duty.tsx';
 import { SoundPrimer, playHichki, useWakeLock } from '../device.tsx';
 import { ActivityStrip, Moments } from '../moments.tsx';
 import { Gallery } from '../gallery.tsx';
-import { gloss, rememberedLine, w } from '../words.ts';
-import { LangPicker, LangProvider, T, useLang } from '../lang.tsx';
+import { gloss, reasonIdeas, rememberedLine, w } from '../words.ts';
+import { LangProvider, T } from '../lang.tsx';
 import { ThanksComposer, ThanksView } from '../thanks.tsx';
 import { Yaadein } from './Yaadein.tsx';
 import { StoryWords, Leaderboard, MicIcon, ProofView, RecordButton, Tabs, ago, clock, uploadRecording } from '../parts.tsx';
@@ -60,7 +60,7 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
   tabs.push(['people', `People (${feed.presence.members.length})`]);
 
   return (
-    <LangProvider gatheringId={id} api={api}>
+    <LangProvider lang={g.readLang ?? ''} api={api}>
     <main className="screen has-tabs away">
       <header className="room-head">
         <p className="eyebrow">{g.name}</p>
@@ -77,7 +77,6 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
       <SoundPrimer />
       <HichkiMoment hichki={room.hichki} />
       {feed.catchUp && !caughtUp && <CatchUpCard api={api} feed={feed} catchUp={feed.catchUp} onDone={() => setCaughtUp(true)} />}
-      {tab === 'ask' && <FirstLanguage gatheringId={id} />}
       {tab === 'ask' && <ActivityStrip feed={feed} />}
 
       {tab === 'ask' && (
@@ -94,7 +93,6 @@ export function Away({ id, token: urlToken }: { id: string; token: string }) {
       {tab === 'people' && (
         <>
           {feed.flags.hichki && <RoomHichki api={api} />}
-          <AwayReadIn />
           <Leaderboard presence={feed.presence} limit={10} />
           <MemberList presence={feed.presence} onHichki={feed.flags.hichki ? (mid) => api.hichkiBack(mid) : undefined} />
         </>
@@ -160,6 +158,8 @@ function Composer({ api, feed }: { api: RoomApi; feed: Feed }) {
   const [error, setError] = useState('');
   const box = useRef<HTMLTextAreaElement>(null);
   const voice = feed.flags.ai_requests;
+  // Ideas made for their situation (soldier, nurse, visa...) come first, then the occasion's.
+  const ideas = [...reasonIdeas(feed.gathering.awayReason), ...feed.packs];
 
   function open(d: Partial<Draft>, note = '') {
     setDraft(d);
@@ -229,11 +229,11 @@ function Composer({ api, feed }: { api: RoomApi; feed: Feed }) {
           {voice ? 'Type it instead' : 'Write a request'}
         </button>
         {error && <p className="error">{error}</p>}
-        {feed.packs.length > 0 && (
+        {ideas.length > 0 && (
           <div className="ideas">
             <p className="eyebrow">Ideas for the {feed.gathering.occasion}</p>
             <ul>
-              {feed.packs.map((idea) => (
+              {ideas.map((idea) => (
                 <li key={idea.text}>
                   <button type="button" className={`idea idea-${idea.kind}`} onClick={() => open({ kind: idea.kind, text: idea.text })}>
                     {idea.text}
@@ -613,31 +613,3 @@ function RoomHichki({ api }: { api: RoomApi }) {
   );
 }
 
-// The same question guests get on joining, asked once on the away person's first visit.
-function FirstLanguage({ gatheringId }: { gatheringId: string }) {
-  const { lang, setLang } = useLang();
-  const [asked, setAsked] = useState(() => localStorage.getItem(`hichki:lang:${gatheringId}`) !== null);
-  if (asked) return null;
-  return (
-    <section className="card lang-first">
-      <p className="eyebrow">One question first</p>
-      <LangPicker value={lang} onChange={setLang} label="How would you like to read what people send?" />
-      <p className="muted small">Pick your language and everything is translated for you, with the original one tap away. You can change this in People.</p>
-      <button
-        type="button"
-        className="btn btn-primary"
-        onClick={() => {
-          setLang(lang);
-          setAsked(true);
-        }}
-      >
-        Done
-      </button>
-    </section>
-  );
-}
-
-function AwayReadIn() {
-  const { lang, setLang } = useLang();
-  return <LangPicker value={lang} onChange={setLang} />;
-}

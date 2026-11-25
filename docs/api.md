@@ -57,6 +57,7 @@ Times are epoch milliseconds. Requests accept either milliseconds or an ISO stri
 | `POST /api/gatherings/:id/join` | anyone | `{ deviceId, name }` | `{ member }`. Same phone joining again returns the same member. |
 | `DELETE /api/gatherings/:id/members/:mid` | host | | `{ ok }`. Removes a guest: their open phones get `fatal` with `removed: true`, their link stops working, and they leave the lists. |
 | `POST /api/gatherings/:id/me` | guest | `{ name?, photo? }` | `{ member }`. Change your own name (still unique) or photo: `photo` is an uploaded photo's `file`, or `null` to remove it. The web page calls this from the "This is you" step shown straight after joining. Works for signed-in guests too; a signed-in guest's chosen name and photo are kept when they sign in on another phone. |
+| `POST /api/gatherings/:id/settings` | host | `{ roomLang?, readLang?, awayReason? }` | `{ gathering }`. Host settings, also accepted when creating. `readLang` translates everything for the whole room (`''` = as said). `awayReason` is one of `nurse`, `doctor`, `soldier`, `shift`, `visa`, `far`, `unwell`, `other`, or `null`; it sets the line the room sees, Duty pe's defaults and the first ideas. `gathering` carries `readLang` and `awayReason`. |
 | `POST /api/gatherings/:id/room-lang` | host | `{ lang }` | `{ gathering }`. The room's language for feature names: `hi` (default), `en`, `kn`, `ta`, `te`, `bn`, `mr`, `gu`, `pa`, `ml`. Also accepted as `roomLang` when creating. `gathering.roomLang` carries it. |
 | `POST /api/gatherings/:id/verified` | host | `{ verified }` | `{ gathering }`. Turns verified guests on or off; people already in stay in. |
 | `GET /api/config` | anyone | | `{ publicBaseUrl, flags, sarvam, signIn }`. `signIn` is `{ publishableKey }` when Clerk is set up, else `null`. |
@@ -232,7 +233,7 @@ Phones that were closed miss events. When a page becomes visible again, fetch th
 
 ## Reading in your own language
 
-`POST /api/gatherings/:id/translate` (guest, host or away): `{ texts: string[], target }`, up to 30 texts. `target` is one of `hi-IN`, `bn-IN`, `gu-IN`, `kn-IN`, `ml-IN`, `mr-IN`, `od-IN`, `pa-IN`, `ta-IN`, `te-IN`, `en-IN`. Returns `{ target, translations: { [text]: translated } }`. Uses Sarvam's `mayura:v1` with the source detected automatically, and caches each text per language, so a text is only ever translated once. Each phone keeps its reader's choice; the original is always shown on request.
+`POST /api/gatherings/:id/translate` (guest, host or away): `{ texts: string[], target }`, up to 30 texts. `target` is one of `hi-IN`, `bn-IN`, `gu-IN`, `kn-IN`, `ml-IN`, `mr-IN`, `od-IN`, `pa-IN`, `ta-IN`, `te-IN`, `en-IN`. Returns `{ target, translations: { [text]: translated } }`. Uses Sarvam's `mayura:v1` with the source detected automatically, and caches each text per language, so a text is only ever translated once. The language is set for the whole room by the host (`gathering.readLang`); the original is always shown on request.
 
 ## Duty pe and the away person's clock
 

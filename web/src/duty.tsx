@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import type { CatchUp, Feed, PublicGathering, RoomApi } from './api.ts';
 import { T } from './lang.tsx';
-import { rememberedLine, w } from './words.ts';
+import { dutyPreset, rememberedLine, w } from './words.ts';
 
 // "Toronto" from "America/Toronto".
 function placeOf(tz: string) {
@@ -56,8 +56,10 @@ export function DutyBanner({ gathering }: { gathering: PublicGathering }) {
 export function DutyControl({ api, gathering, onChange }: { api: RoomApi; gathering: PublicGathering; onChange: () => void }) {
   useMinute();
   const [open, setOpen] = useState(false);
-  const [hours, setHours] = useState(8);
-  const [note, setNote] = useState('');
+  // Nurses, doctors, soldiers and shift workers get their usual shift filled in.
+  const preset = dutyPreset(gathering.awayReason);
+  const [hours, setHours] = useState(preset?.hours ?? 8);
+  const [note, setNote] = useState(preset?.note ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const duty = gathering.duty && gathering.duty.until > Date.now() ? gathering.duty : null;
@@ -86,6 +88,25 @@ export function DutyControl({ api, gathering, onChange }: { api: RoomApi; gather
         <button type="button" className="btn btn-quiet" disabled={busy} onClick={() => run(() => api.setDuty(null))}>
           I&rsquo;m off duty
         </button>
+        {error && <p className="error">{error}</p>}
+      </section>
+    );
+  }
+
+  if (!open && preset) {
+    // One tap for people who work through celebrations.
+    return (
+      <section className="card duty-card duty-ready">
+        <p className="eyebrow">{w().duty}</p>
+        <p>On {preset.note.toLowerCase().startsWith('on ') ? preset.note.slice(3) : preset.note.toLowerCase()} today? One tap tells the room, and keeps every hichki for your break.</p>
+        <div className="actions">
+          <button type="button" className="btn btn-primary" disabled={busy} onClick={() => run(() => api.setDuty(Date.now() + preset.hours * 3600_000, preset.note))}>
+            Go on duty for {preset.hours} hours
+          </button>
+          <button type="button" className="btn btn-quiet btn-small" onClick={() => setOpen(true)}>
+            Change
+          </button>
+        </div>
         {error && <p className="error">{error}</p>}
       </section>
     );

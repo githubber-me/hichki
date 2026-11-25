@@ -17,6 +17,8 @@ export function gatheringView(g: Gathering) {
     // The away person's timezone, so the room can show their clock.
     awayTz: g.away_tz,
     roomLang: g.room_lang ?? 'hi',
+    readLang: g.read_lang ?? '',
+    awayReason: g.away_reason ?? null,
     // Duty pe: shown to the room as "on duty until 6 AM".
     duty: g.duty_until && g.duty_from && g.duty_until > Date.now() ? { from: g.duty_from, until: g.duty_until, note: g.duty_note } : null,
   };

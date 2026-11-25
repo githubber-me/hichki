@@ -1,5 +1,5 @@
-// Read in your own language. Each person chooses, on joining or later: the language
-// things were said in (the default), or one of theirs. Texts are translated by
+// Read in the room's language. The host chooses, in the gathering's settings: the
+// language things were said in (the default), or one for everyone. Texts are translated by
 // Sarvam through the server, once per language, and the original is always one tap away.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -27,20 +27,13 @@ export const saveLang = (gatheringId: string, lang: string) => localStorage.setI
 type Ctx = { lang: string; setLang: (l: string) => void; get: (text: string) => string | undefined; want: (text: string) => void };
 const LangContext = createContext<Ctx>({ lang: '', setLang: () => {}, get: () => undefined, want: () => {} });
 
-export function LangProvider({ gatheringId, api, children }: { gatheringId: string; api: RoomApi; children: ReactNode }) {
-  const [lang, setLangState] = useState(() => savedLang(gatheringId));
+// The whole room reads in one language, set by the host ('' means as it was said).
+export function LangProvider({ lang, api, children }: { lang: string; api: RoomApi; children: ReactNode }) {
+  const setLang = useCallback(() => {}, []);
   const [, setVersion] = useState(0);
   const cache = useRef(new Map<string, string>());
   const pending = useRef(new Set<string>());
   const timer = useRef(0);
-
-  const setLang = useCallback(
-    (l: string) => {
-      saveLang(gatheringId, l);
-      setLangState(l);
-    },
-    [gatheringId],
-  );
 
   // Collect the texts a screen needs, then ask for them in one call.
   const flush = useCallback(async () => {

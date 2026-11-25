@@ -92,3 +92,93 @@ export function rememberedLine(from?: string): { text: string; lang: string } {
 export function rememberedCount(): { text: string; lang: string } {
   return current === 'hi' ? { text: 'बार याद किया', lang: 'hi' } : { text: 'times remembered', lang: 'en' };
 }
+
+// ---------------------------------------------------------------------------
+// Why the away person can't come. Set by the host in Additional settings, it
+// changes the line the room sees, Duty pe's defaults, and the first ideas.
+// ---------------------------------------------------------------------------
+
+export const AWAY_REASONS: [string, string][] = [
+  ['', 'Not saying'],
+  ['nurse', 'Nurse on duty'],
+  ['doctor', 'Doctor on duty'],
+  ['soldier', 'Serving in the forces'],
+  ['shift', 'Working a shift'],
+  ['visa', 'Visa didn’t come through'],
+  ['far', 'Too far to travel'],
+  ['unwell', 'Unwell, or not up to travelling'],
+  ['other', 'Something else'],
+];
+
+// The line under the gathering's name, for everyone at the gathering.
+export function reasonLine(reason: string | null | undefined, name: string): string | null {
+  switch (reason) {
+    case 'nurse':
+      return `${name} is on duty at the hospital, caring for others tonight.`;
+    case 'doctor':
+      return `${name} is on call at the hospital, looking after patients.`;
+    case 'soldier':
+      return `${name} is serving the country, far from home.`;
+    case 'shift':
+      return `${name} is working through the celebration.`;
+    case 'visa':
+      return `${name}’s visa didn’t come through in time. They’re with you from here.`;
+    case 'far':
+      return `${name} is too far away to make it this time.`;
+    case 'unwell':
+      return `${name} couldn’t travel. Bring the celebration to them.`;
+    default:
+      return null;
+  }
+}
+
+// Duty pe, ready for people who work through it.
+export function dutyPreset(reason: string | null | undefined): { hours: number; note: string } | null {
+  switch (reason) {
+    case 'nurse':
+      return { hours: 12, note: 'Night shift at the hospital' };
+    case 'doctor':
+      return { hours: 12, note: 'On call at the hospital' };
+    case 'soldier':
+      return { hours: 24, note: 'On duty at the post' };
+    case 'shift':
+      return { hours: 8, note: 'On shift' };
+    default:
+      return null;
+  }
+}
+
+// A few ideas made for their situation, shown before the occasion's.
+export function reasonIdeas(reason: string | null | undefined): { kind: 'see' | 'do' | 'story'; text: string }[] {
+  switch (reason) {
+    case 'nurse':
+    case 'doctor':
+      return [
+        { kind: 'do', text: 'Record everyone wishing me a good night shift' },
+        { kind: 'see', text: 'Send me a photo of the food you saved for me' },
+      ];
+    case 'soldier':
+      return [
+        { kind: 'see', text: 'Keep my seat at the table, and send me a photo of it' },
+        { kind: 'do', text: 'Ask the kids to record a message for me' },
+      ];
+    case 'shift':
+      return [{ kind: 'do', text: 'Send me a voice note from the dance floor for my break' }];
+    case 'visa':
+      return [
+        { kind: 'see', text: 'Show me everything the way I’d have seen it walking in' },
+        { kind: 'do', text: 'Hug Mummy and tell her the visa will come next time' },
+      ];
+    case 'far':
+      return [{ kind: 'see', text: 'Show me who’s sitting where I’d be sitting' }];
+    case 'unwell':
+      return [{ kind: 'do', text: 'Bring a plate home for me' }];
+    default:
+      return [];
+  }
+}
+
+// Doctors, nurses, soldiers and shift workers get Duty pe up front.
+export function worksThrough(reason: string | null | undefined): boolean {
+  return reason === 'nurse' || reason === 'doctor' || reason === 'soldier' || reason === 'shift';
+}

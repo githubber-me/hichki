@@ -4,7 +4,8 @@ import { api, getKeepsake, publicBaseUrl, saved, type PublicGathering, type Room
 import { useRoom } from '../live.ts';
 import { MemberList } from './MemberList.tsx';
 import { AwayClock, DutyBanner } from '../duty.tsx';
-import { ROOM_LANGS, setRoomLang, w } from '../words.ts';
+import { AWAY_REASONS, ROOM_LANGS, reasonLine, setRoomLang, w } from '../words.ts';
+import { READ_LANGUAGES } from '../lang.tsx';
 import { HichkiBack } from './Guest.tsx';
 import { HichkiButton, HichkiTimeline, Leaderboard } from '../parts.tsx';
 
@@ -82,6 +83,9 @@ export function Host({ id, token: urlToken }: { id: string; token: string }) {
           {presence?.awayOnline ? `${gathering.awayName} is here now` : `${gathering.awayName} hasn’t opened it yet`}
         </p>
         <AwayClock gathering={room.feed?.gathering ?? gathering} />
+        {reasonLine((room.feed?.gathering ?? gathering).awayReason, gathering.awayName) && (
+          <p className="reason-line">{reasonLine((room.feed?.gathering ?? gathering).awayReason, gathering.awayName)}</p>
+        )}
       </section>
 
       <DutyBanner gathering={room.feed?.gathering ?? gathering} />
@@ -91,7 +95,7 @@ export function Host({ id, token: urlToken }: { id: string; token: string }) {
       {room.feed && <HichkiTimeline entries={room.feed.hichkis ?? []} awayName={gathering.awayName} limit={3} />}
       {presence && <Leaderboard presence={presence} limit={5} />}
       {room.api && <VerifiedSwitch api={room.api} gathering={room.feed?.gathering ?? gathering} />}
-      {room.api && <RoomLanguage api={room.api} gathering={room.feed?.gathering ?? gathering} />}
+      {room.api && <Settings api={room.api} gathering={room.feed?.gathering ?? gathering} />}
       <MemberList presence={presence} onRemove={room.api ? async (mid) => void (await room.api!.removeMember(mid)) : undefined} />
 
       {room.api && <WrapUp api={room.api} gathering={room.feed?.gathering ?? gathering} token={token} />}
@@ -210,34 +214,57 @@ function VerifiedSwitch({ api: roomApi, gathering }: { api: RoomApi; gathering: 
   );
 }
 
-// The room's language for feature names. Hichki stays Hichki.
-function RoomLanguage({ api: roomApi, gathering }: { api: RoomApi; gathering: PublicGathering }) {
+// Settings the host can change any time: why the away person can't come, the
+// language for names of things, and the language everything is shown in.
+function Settings({ api: roomApi, gathering }: { api: RoomApi; gathering: PublicGathering }) {
   const [error, setError] = useState('');
+  async function change(s: { roomLang?: string; readLang?: string; awayReason?: string | null }) {
+    setError('');
+    try {
+      const { gathering: g } = await roomApi.settings(s);
+      setRoomLang(g.roomLang);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
   return (
-    <section className="card">
+    <details className="card more-settings">
+      <summary>Settings</summary>
       <label className="field">
-        <span>Language for the room</span>
-        <select
-          value={gathering.roomLang ?? 'hi'}
-          onChange={async (e) => {
-            setError('');
-            try {
-              const { gathering: g } = await roomApi.setRoomLang(e.target.value);
-              setRoomLang(g.roomLang);
-            } catch (err) {
-              setError((err as Error).message);
-            }
-          }}
-        >
-          {ROOM_LANGS.map(([code, name]) => (
+        <span>Why can&rsquo;t {gathering.awayName} come?</span>
+        <select value={gathering.awayReason ?? ''} onChange={(e) => change({ awayReason: e.target.value || null })}>
+          {AWAY_REASONS.map(([code, label]) => (
             <option key={code} value={code}>
-              {name}
+              {label}
             </option>
           ))}
         </select>
-        <small className="muted">Feature names on every phone follow this: {w().letter}, {w().story}, {w().memories}.</small>
+      </label>
+      <label className="field">
+        <span>Names of things in</span>
+        <select value={gathering.roomLang ?? 'hi'} onChange={(e) => change({ roomLang: e.target.value })}>
+          {ROOM_LANGS.map(([code, label]) => (
+            <option key={code} value={code}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <small className="muted">
+          {w().letter}, {w().story}, {w().memories}. Hichki stays Hichki.
+        </small>
+      </label>
+      <label className="field">
+        <span>Show everything in</span>
+        <select value={gathering.readLang ?? ''} onChange={(e) => change({ readLang: e.target.value })}>
+          {READ_LANGUAGES.map(([code, label]) => (
+            <option key={code} value={code}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <small className="muted">Translated for every phone, with the original one tap away.</small>
       </label>
       {error && <p className="error">{error}</p>}
-    </section>
+    </details>
   );
 }
