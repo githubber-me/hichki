@@ -127,7 +127,7 @@ Called only from the server, so the key never reaches a browser.
 
 ### Flagsmith
 
-The server uses the Node SDK (`@flagsmith/nodejs`) with local evaluation, refreshes flags every `FLAGSMITH_REFRESH_SECONDS`, and pushes any change to every connected phone as a `flags` event. Flipping a flag in the Flagsmith dashboard changes the whole room within seconds. Flags are enforced on the server too, so a hidden button can't be called directly. If Flagsmith can't be reached, every flag falls back to on.
+The server uses the Node SDK (`@flagsmith/nodejs`) with local evaluation, refreshes flags every `FLAGSMITH_REFRESH_SECONDS`, and pushes any change to every connected phone as a `flags` event. Flipping a flag in the Flagsmith dashboard changes the whole room within seconds: tested live on the public link, the Hichki button disappeared from a guest's phone 9 seconds after `hichki` was switched off, and came back 8 seconds after it was switched on. Flags are enforced on the server too, so a hidden button can't be called directly. If Flagsmith can't be reached, every flag falls back to on.
 
 | Flag | Type | Effect |
 | --- | --- | --- |

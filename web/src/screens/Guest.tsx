@@ -180,8 +180,8 @@ function Room({ gathering, member }: { gathering: PublicGathering; member: Membe
               <h2>{earlier.length ? 'Nothing is waiting right now' : `${away} hasn’t asked for anything yet`}</h2>
               <p className="muted">
                 {earlier.length
-                  ? `When ${away} asks again, it shows up here on every phone. Until then, send a hichki.`
-                  : 'When they do, it shows up here on every phone. Until then, send a hichki.'}
+                  ? `When ${away} asks again, it shows up here on every phone.${feed.flags.hichki ? ' Until then, send a hichki.' : ''}`
+                  : `When they do, it shows up here on every phone.${feed.flags.hichki ? ' Until then, send a hichki.' : ''}`}
               </p>
             </section>
           )}
